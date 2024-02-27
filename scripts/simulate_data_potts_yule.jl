@@ -35,45 +35,56 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 
+using AutoRegressiveASR
 using BackwardCoalescent
 using DCATools
 using JSON3
 
 ## Parameters
 # Potts model
-potts_file = parsed_args["potts"]
+potts_file = parsed_args["potts"] |> abspath
 sample_potts_file = parsed_args["sample_potts_eq"]
+potts = DCAGraph(potts_file)
 
 # Genealogy
 nleaves = 50 # number of leaves
 nsweeps = parsed_args["nsweeps"] # desired number of MCMC sweeps between root and leaves
 L = potts.L
-b = log(n)/nsweeps/potts.L
+b = log(nleaves)/nsweeps/potts.L
 outgroup = parsed_args["add_outgroup"]
 ntrees = parsed_args["ntrees"]
 
-# folders
-script = relpath(abspath(@__FILE__), projectdir())
+# Out folder
 timestamp = now_string(minute=true)
 
 parameters = @dict(
     potts_file, sample_potts_file,
-    nleaves, nsweeps, b, outgroup, ntrees,
-    script, timestamp,
+    nleaves, ntrees, nsweeps, b, outgroup,
+    timestamp,
 )
+@tag!(parameters)
 identifier = savename(
     parsed_args["prefix"], parameters;
-    ignores = ["potts_file", "sample_potts_file", "script", "timestamp"]
+    accesses = [:nleaves, :ntrees, :nsweeps, :outgroup],
+    sort = true,
 )
 outfolder = joinpath(parsed_args["outfolder"], identifier)
+mkpath(outfolder)
 
+# Setting up folders
+@info "Using Potts model in $(project_path(potts_file))"
+@info "Results saved in $(project_path(outfolder))"
 
-@info "Using Potts model in $potts_file and eq. sample $sample_potts_file"
-@info "Results saved in $outfolder"
-
+if isfile(sample_potts_file)
+    cp(sample_potts_file, outfolder)
+elseif isempty(sample_potts_file)
+    @info "No sample file given"
+else
+    @warn "Could not find file $(abspath(sample_potts_file)) containing eq. sample of potts"
+end
 
 dat_folder = joinpath(outfolder, "data")
-if isdir(dat_folder)
+if isdir(dat_folder) || isfile(dat_folder)
     @info "Remove all contents of $dat_folder before simulating again, are you sure? [y/n]"
     yes = readline()
     !in(yes[1], ['Y', 'y']) && error("Aborting ($yes)")
@@ -89,8 +100,7 @@ open(joinpath(outfolder, "simulation_parameters.json"), "w") do f
 end
 
 ## simulation
-potts = DCAGraph(potts_file)
-get_tree = () -> genealogy(YuleCoalescent(n, b))
+get_tree = () -> genealogy(YuleCoalescent(nleaves, b))
 ASRU.generate_trees(
     dat_folder, get_tree;
     add_outgroup=outgroup,
@@ -98,5 +108,5 @@ ASRU.generate_trees(
     M = ntrees,
 )
 foreach(ASRU.get_tree_folders(dat_folder)) do fol
-    ASRU.simulate_sequences(fol, potts)
+    AutoRegressiveASR.simulate_sequences(fol, potts)
 end

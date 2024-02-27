@@ -36,10 +36,11 @@ isnothing(weight_file) && @info "No weights found, will compute them."
 
 ## Parameters for learning log
 timestamp = now_string(; minute=true)
-script = relpath(abspath(@__FILE__), projectdir())
+# script = relpath(abspath(@__FILE__), projectdir())
 parameters = @dict(
-    fastafile, weight_file, timestamp, script
+    fastafile, weight_file, timestamp#, script
 )
+@tag!(parameters)
 
 ## Reading data and learning
 S = read_msa(fastafile) |> unique
