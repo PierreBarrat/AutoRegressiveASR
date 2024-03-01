@@ -128,6 +128,7 @@ function alignment_from_iqtree_state(
     out_files = ["reconstructed_internals.fasta"],
     prefix = "",
     alphabet = AA_IQTREE_ALPHABET,
+    nodes = nothing,
 )
     node_models = parse_iqtree_state_file(joinpath(folder, state_file); alphabet)
     for out_fasta in out_files

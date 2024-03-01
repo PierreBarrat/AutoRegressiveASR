@@ -157,13 +157,48 @@ end
     easy_smooth(x, y; w = 10)
     easy_smooth(df::DataFrame, f1, f2; kwargs...)
 """
-function easy_smooth(x, y; w = 25)
-    idx = sortperm(x)
+function easy_smooth(x, y; w = 25, alg=:sma, outliers_left = 0., outliers_right = .05)
+    idx = exclude_outliers_perm(x; left=outliers_left, right=outliers_right)
     xs = x[idx]
     ys = y[idx]
-    return collect.(skipmissings(xs, sma(ys, w, true)))
+    (xsmth, ysmth) = if alg == :loess
+        xs, loess(xs, ys; q=w)(xs)
+    elseif alg == :sma
+        xs, sma(ys, w, true)
+    elseif alg == :hist
+        hist_smooth(xs, ys; nbins=w, outliers_left=0., outliers_right=0.) #outliers already removed
+    else
+        error("Unknwon smoothing alg $alg. ")
+    end
+    return collect.(skipmissings(xsmth, ysmth))
+    # return collect.(skipmissings(xs, sma(ys, w, true)))
 end
 easy_smooth(df::DataFrame, f1, f2; kwargs...) = easy_smooth(df[!, f1], df[!, f2]; kwargs...)
+
+function hist_smooth(x, y; nbins=100, outliers_left=0., outliers_right = .01)
+    idx = exclude_outliers_perm(x; left=outliers_left, right=outliers_right)
+    xs = x[idx]
+    ys = y[idx]
+
+    xmin, xmax = extrema(xs)
+    edges = range(xmin, xmax, length=nbins+1)
+    summed_weights = fit(Histogram, xs, edges).weights |> cumsum
+
+    y_av = map(1:nbins) do i
+        ilow = i == 1 ? 1 : summed_weights[i-1]
+        mean(ys[ilow:summed_weights[i]])
+    end
+    bin_centers = (edges[1:end-1] .+ edges[2:end])/2
+    return bin_centers, y_av
+end
+
+function exclude_outliers_perm(x; left = 0., right = 0.)
+    idx = sortperm(x)
+    L = length(x)
+    rb = L - Int(floor(right * L))
+    lb = 1+Int(floor(left * L))
+    return idx[lb:rb]
+end
 
 function ground_state(arnet::ArNet; alphabet = ASR.aa_alphabet, translate = true)
     # @extract arnet:H J p0 idxperm

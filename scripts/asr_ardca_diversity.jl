@@ -8,8 +8,16 @@ using Dates
 using JLD2
 using JSON3
 
-function asr_ardca(parsed_args::AbstractDict; force=false)
-    arnet_file = project_path(parsed_args["arnet"])
+function asr_ardca_sample_internals(parsed_args::AbstractDict)
+    return asr_ardca_sample_internals(;
+        arnet_file = parsed_args["arnet"], folder = parsed_args["folder"]
+    )
+end
+
+function asr_ardca_sample_internals(;
+    arnet_file="", folder=nothing, force=false,
+)
+    dat_folder = joinpath(folder, "data")
 
     arnet = JLD2.load(projectdir(arnet_file))["arnet"]
     evo_arnet = ASR.AutoRegressiveModel(arnet)
@@ -20,13 +28,25 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
     strategy_infer_bl = ASRMethod(; joint=false, optimize_branch_length_cycles=2, verbosity=2)
     strategy_ml = ASRMethod(; joint=false, ML=true, optimize_branch_length=false, verbosity=2)
     strategy_bayes = ASRMethod(;
-        joint=false, ML=false, repetitions = 10, optimize_branch_length=false, verbosity=2,
+        joint=false, ML=false, repetitions = 500, optimize_branch_length=false, verbosity=2,
     )
-    prefix = "autoregressive/"
+    prefix = "autoregressive_diversity/"
+
+    timestamp = now()
+    parameters = @dict(
+        arnet_file,
+        timestamp,
+        prefix,
+        opt_bl,
+        strategy_infer_bl,
+        strategy_ml,
+        strategy_bayes,
+    )
+    @tag!(parameters)
+    # will only be written if an actual computation is performed
 
     # Reconstruct on real tree using AR model
     @info "Reconstruction using ASR"
-    dat_folder = joinpath(parsed_args["folder"], "data")
     performed = false
     for fol in ASRU.get_tree_folders(dat_folder)
         @info fol
@@ -35,12 +55,12 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
                 @warn "Removing $(joinpath(fol,prefix))"
                 rm(joinpath(fol, prefix); recursive=true)
             else
-                @warn "$(joinpath(fol, prefix)) already exists. Not running asr_ardca again"
+                @warn "$(joinpath(fol, prefix)) already exists. Not running asr_ardca_sample_internals again"
                 continue
             end
         end
         mkpath(joinpath(fol, prefix));
-        performed = true
+
         # reinfer branch length
         if opt_bl == :opt
             @info "Optimizing branch length starting from iqtree's tree"
@@ -69,33 +89,29 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
             fol, evo_arnet, strategy_ml;
             tree_file = joinpath(prefix, "tree_inferred.nwk"),
             alignment_file = "alignment_leaves.fasta",
-            outfiles = ["reconstructed_internals_ML.fasta"],
-            prefix = prefix * "ML/"
+            outfiles = "reconstructed.fasta",
+            prefix = prefix * "ML/",
+            alignment_per_node = true,
+            node_list = nothing,
         )
         # Bayesian
         ASRU.reconstruct(
             fol, evo_arnet, strategy_bayes;
             tree_file = joinpath(prefix, "tree_inferred.nwk"),
             alignment_file = "alignment_leaves.fasta",
-            outfiles = ["reconstructed_internals_rep$(i).fasta" for i in 1:strategy_bayes.repetitions],
-            prefix = prefix * "Bayes/"
+            outfiles = "reconstructed.fasta",
+            outtable = "asr_table.csv",
+            prefix = prefix * "Bayes/",
+            alignment_per_node = true,
+            node_list = nothing,
         )
 
+        performed = true
     end
 
     if performed
-        timestamp = now()
-        parameters = @dict(
-            arnet_file,
-            timestamp,
-            prefix,
-            opt_bl,
-            strategy_infer_bl,
-            strategy_ml,
-            strategy_bayes,
-        )
-        @tag!(parameters)
-        open(joinpath(parsed_args["folder"], "ardca_reconstruction_parameters.json"), "w") do f
+        param_file = joinpath(folder, "ardca_diversity_reconstruction_parameters.json")
+        open(param_file, "w") do f
             JSON3.pretty(f, JSON3.write(parameters))
         end
     end

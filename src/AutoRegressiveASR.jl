@@ -7,6 +7,7 @@ using Chain
 using CSV
 using Dates
 using DataFrames
+using DataFramesMeta
 using DCATools
 using DrWatson
 using FASTX
@@ -27,8 +28,13 @@ export evolve, evolve_tree
 
 include("simulation.jl")
 
+include("dynamics_utils.jl")
+
 include("ASRUtils/src/ASRUtils.jl")
 const ASRU = ASRUtils
 export ASRU, ASRUtils
+
+include("contact_prediction.jl")
+export ppv
 
 end # module
