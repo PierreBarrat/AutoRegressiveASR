@@ -17,7 +17,7 @@ end
 # ╔═╡ a8ec28f8-c9ad-11ee-1efc-751443eb65d6
 begin
 	using DrWatson
-	@quickactivate("AutoRegressiveASR")
+	quickactivate(@__DIR__, "AutoRegressiveASR")
 	using AutoRegressiveASR
 	using Chain
 	using DCATools
@@ -73,7 +73,7 @@ end
 # ╔═╡ a43ef7a1-cc46-4e0c-8e5d-93455d78a1f7
 md"## Closest ancestral sequence for each leaf"
 
-# ╔═╡ 30fb0b73-9987-4caa-85a6-a5d51cccef64
+# ╔═╡ df59e5b6-8968-4758-b39c-5d3c6f0e1a2f
 closest_eq_sequence = map(DCATools.subsample(sample_eq, 1:10:10_000)) do s
 	minimum(DCATools.subsample(sample_eq, 2:10:10_000)) do x 
 		DCATools.hamming(s, x)/length(x)
@@ -114,6 +114,6 @@ end
 # ╠═257ea632-a1ad-40e1-818a-a04906bc1170
 # ╠═b618a701-c11b-456d-b747-c7161afb879c
 # ╟─a43ef7a1-cc46-4e0c-8e5d-93455d78a1f7
-# ╠═30fb0b73-9987-4caa-85a6-a5d51cccef64
+# ╠═df59e5b6-8968-4758-b39c-5d3c6f0e1a2f
 # ╠═2ddb0d89-81d4-46af-a102-c4a2826823ac
 # ╠═9d129f47-b77d-4395-9e07-d9dba60416ba

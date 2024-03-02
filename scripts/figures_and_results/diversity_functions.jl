@@ -40,12 +40,16 @@ function _measures(profile::ASR.ProfileModel, ref_seqs::AbstractDict)
     reconstructed = alignment_from_profile(profile)
     M = distance_to_refseqs(reconstructed, ref_seqs)
     M["entropy"] = ASR.entropy(profile)
+    weights = DCATools.computeweights(reconstructed; normalize=false)
+    M["Meff_scaled"] = sum(weights) / length(weights)
     return M
 end
 # ╔═╡ 72bf67cb-53b5-4595-8ea7-c3a1e34b8a55
 function _measures(reconstructed::DCASample, rec_table, ref_seqs::AbstractDict)
     M = distance_to_refseqs(reconstructed, ref_seqs)
     M["entropy"] = -mean(rec_table.Total_LogLikelihood)
+    weights = DCATools.computeweights(reconstructed; normalize=false)
+    M["Meff_scaled"] = sum(weights) / length(weights)
     return M
 end
 

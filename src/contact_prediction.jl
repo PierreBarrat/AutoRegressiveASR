@@ -9,3 +9,11 @@ function ppv(true_distances::DataFrame, scores::DataFrame; Δi = 4, contact_thre
     end
     return cumsum(dat.contact) ./ collect(1:size(dat,1))
 end
+
+function ppv(true_distances::AbstractString, scores::AbstractString; kwargs...)
+    return ppv(
+        DataFrame(CSV.File(true_distances)),
+        DataFrame(CSV.File(scores));
+        kwargs...
+    )
+end
