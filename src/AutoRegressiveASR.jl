@@ -19,7 +19,7 @@ include("constants.jl")
 export AA_IQTREE_ALPHABET
 
 include("utils.jl")
-export now_string, project_path
+export pluto_ingredients, project_path
 
 include("propagate_sequences.jl")
 
