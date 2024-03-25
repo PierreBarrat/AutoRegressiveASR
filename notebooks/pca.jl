@@ -97,6 +97,16 @@ begin
 	real_marker = (32, :star)
 	ml_marker = (18, :^)
 	bayes_marker = (4, .75, stroke(0))
+	leaves_marker = (4, .5, stroke(0), :blue)
+end
+
+# ╔═╡ e77615fb-7233-4d24-a773-19c3d56e0c98
+function plot_leaves!(p, rep)
+	scatter!(
+		data_all[rep]["leaves"][1,:], data_all[rep]["leaves"][2,:];
+		marker = leaves_marker, label=""
+	)
+	return p
 end
 
 # ╔═╡ 37128352-bc1d-4c51-8057-b8d782d455f4
@@ -143,8 +153,17 @@ function plot_strategy!(p, strat, X)
 	scatter!(p, [X[1,:]], [X[2,:]]; marker, color, label)
 end
 
+# ╔═╡ 84ad9dc6-fc7f-40d0-ba4e-7b4b400739a9
+_fs
+
 # ╔═╡ 4f40c0c4-922a-4933-8955-e3363cb160ba
-rep = "16"
+rep = "19"
+
+# ╔═╡ 03e4d27e-c3b4-404b-afa4-32390eeaa622
+
+
+# ╔═╡ 8e2b635e-363b-45aa-9ba8-ebf246aeca32
+data_all[rep][]
 
 # ╔═╡ 907700af-44f5-4908-9c4c-2951ce2e8377
 tree = read_tree(joinpath(folder_full, "data", rep, "tree.nwk"))
@@ -186,7 +205,7 @@ function branch_with_most_nodes(tree)
 		length(TreeTools.node_ancestor_list(leaf))
 	end
 	list = TreeTools.node_ancestor_list(base)[2:end-1]
-	depths = map(node -> TreeTools.distance(tree, node, label(base)), list)
+	depths = map(node -> TreeTools.distance(tree, node, TreeTools.label(base)), list)
 	return (nodes=list, depths=depths)
 end
 
@@ -195,13 +214,15 @@ node_list = branch_with_most_nodes(tree).nodes
 
 # ╔═╡ 7573d21a-dee0-4f44-83f4-9dde41f86fc4
 let
-	node = node_list[7]
+	node = node_list[end]
 	strat = strategies[1]
 	p = pca_nat_ref()
-	plot_strategies!(p, rep, node; bayes=false)
+	# plot_leaves!(p, rep)
+	plot_strategies!(p, rep, node; bayes=true)
 	# data_all[rep][node][strat]
 	# strat
-	plot_trace!(p, rep, node_list)
+	# plot_trace!(p, rep, node_list)
+	plot!(legend = :top, size = (1200, 900))
 end
 
 # ╔═╡ 81e1d628-7944-4a8f-8380-c0eea1c79129
@@ -223,13 +244,17 @@ end
 # ╠═3c587c48-e5d6-4323-8508-ec477f5c2241
 # ╠═2e57a7fe-0ac2-4556-9b35-7802bbd72bfe
 # ╠═2d6681a0-3155-400d-9d08-4f5f2eef6b19
+# ╠═e77615fb-7233-4d24-a773-19c3d56e0c98
 # ╠═4796d427-3716-4aa2-9fe3-4fd708cef2da
 # ╠═37128352-bc1d-4c51-8057-b8d782d455f4
 # ╠═a4a09a17-b1bc-4a1e-a1cb-9ac25b464241
 # ╠═cf78c311-5f4f-4a92-b2c0-9d53a24ac880
 # ╠═df6f96ae-8147-49e6-bdb3-7abbda7dd716
+# ╠═84ad9dc6-fc7f-40d0-ba4e-7b4b400739a9
 # ╠═4f40c0c4-922a-4933-8955-e3363cb160ba
 # ╠═7573d21a-dee0-4f44-83f4-9dde41f86fc4
+# ╠═03e4d27e-c3b4-404b-afa4-32390eeaa622
+# ╠═8e2b635e-363b-45aa-9ba8-ebf246aeca32
 # ╠═907700af-44f5-4908-9c4c-2951ce2e8377
 # ╠═4aa2b4d3-56db-4462-9102-b94a122dfa85
 # ╟─e5814bbd-21cb-46ab-bd9b-8bb44fffcca1

@@ -41,7 +41,7 @@ function pca_dat_folder(folder, strategies, pca_model)
     reconstructed_nodes = @chain begin
         read_tree(joinpath(folder, "tree.nwk"))
         internals(; skiproot=true)
-        map(label, _)
+        map(TreeTools.label, _)
     end
     return pca_dat_folder(folder, strategies, reconstructed_nodes, pca_model)
 end
@@ -57,6 +57,8 @@ function pca_dat_folder(folder, strategies, nodes, pca_model::PCA)
         out[node] = Dict()
         foreach(s -> out[node][s] = pca_proj(s, node), strategies)
     end
+    leaves_real = read_msa(joinpath(folder, "alignment_leaves.fasta"))
+    out["leaves"] = predict(pca_model, DCATools.onehot(leaves_real))
     return out
 end
 

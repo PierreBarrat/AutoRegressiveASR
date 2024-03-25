@@ -175,7 +175,7 @@ function easy_smooth(x, y; w = 25, alg=:sma, outliers_left = 0., outliers_right 
 end
 easy_smooth(df::DataFrame, f1, f2; kwargs...) = easy_smooth(df[!, f1], df[!, f2]; kwargs...)
 
-function hist_smooth(x, y; nbins=100, outliers_left=0., outliers_right = .01)
+function hist_smooth(x, y; nbins=100, outliers_left=0., outliers_right = .05)
     idx = exclude_outliers_perm(x; left=outliers_left, right=outliers_right)
     xs = x[idx]
     ys = y[idx]

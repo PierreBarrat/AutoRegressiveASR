@@ -15,7 +15,7 @@ using TreeTools
 # Sample alignment from profile model
 # Output a DCASample object, with the standard DCATools alphabet
 # This is needed if the input profile model has a different alphabet (e.g. iqtree)
-function alignment_from_profile(profile::ASR.ProfileModel; M = 1000)
+function alignment_from_profile(profile::ASR.ProfileModel; M = 500)
     return @chain begin
         ASR.sample(profile, M)
         map(x -> ASR.intvec_to_sequence(x, profile.alphabet), eachcol(_))
@@ -36,32 +36,46 @@ function ml_from_profile(profile::ASR.ProfileModel)
 end
 
 # ╔═╡ 946c4e24-a011-4f60-9eec-de65b9042993
-function _measures(profile::ASR.ProfileModel, ref_seqs::AbstractDict)
+function _measures(
+    profile::ASR.ProfileModel, ref_seqs::AbstractDict;
+    ignore_columns = Int[]
+)
     reconstructed = alignment_from_profile(profile)
-    M = distance_to_refseqs(reconstructed, ref_seqs)
-    M["entropy"] = ASR.entropy(profile)
+    M = distance_to_refseqs(reconstructed, ref_seqs; ignore_columns)
+    M["entropy"] = ASR.entropy(profile; ignore_columns)
     weights = DCATools.computeweights(reconstructed; normalize=false)
+    M["Meff"] = sum(weights)
     M["Meff_scaled"] = sum(weights) / length(weights)
     return M
 end
 # ╔═╡ 72bf67cb-53b5-4595-8ea7-c3a1e34b8a55
-function _measures(reconstructed::DCASample, rec_table, ref_seqs::AbstractDict)
-    M = distance_to_refseqs(reconstructed, ref_seqs)
+function _measures(
+    reconstructed::DCASample, rec_table, ref_seqs::AbstractDict;
+    ignore_columns = Int[]
+)
+    M = distance_to_refseqs(reconstructed, ref_seqs; ignore_columns)
     M["entropy"] = -mean(rec_table.Total_LogLikelihood)
     weights = DCATools.computeweights(reconstructed; normalize=false)
+    M["Meff"] = sum(weights)
     M["Meff_scaled"] = sum(weights) / length(weights)
     return M
 end
 
-function distance_to_refseqs(reconstructed::DCASample, ref_seqs::AbstractDict)
+function distance_to_refseqs(
+    reconstructed::DCASample, ref_seqs::AbstractDict; ignore_columns = Int[],
+)
+    # sequence positions to consider
+    L = size(reconstructed, 1)
+    positions = isempty(ignore_columns) ? (1:L) : filter(!in(ignore_columns), 1:L)
+
     M = Dict{Any, Any}()
     # av and std hamming distance to set of ref. sequences (ml, real, consensus, ...)
     for (label, ref_seq) in ref_seqs
-        m = distance_to_refseq(reconstructed, ref_seq, label)
+        m = distance_to_refseq(reconstructed, ref_seq, label; positions)
         foreach(x -> M[x[1]] = x[2], m)
     end
     # self hamming distance
-    self_hamming = DCATools.pw_hamming_distance(reconstructed; step=10)
+    self_hamming = DCATools.pw_hamming_distance(reconstructed; step=10, positions)
     M["av_self_hamming"] = mean(self_hamming)
     M["std_self_hamming"] = std(self_hamming)
 
@@ -70,9 +84,12 @@ end
 
 """
 """
-function distance_to_refseq(reconstructed::DCASample, ref_seq, label="real")
+function distance_to_refseq(
+    reconstructed::DCASample, ref_seq, label="real";
+    positions = Int[],
+)
     hamming_to_ref = map(reconstructed) do s
-        DCATools.hamming(s, ref_seq; normalize=true)
+        DCATools.hamming(s, ref_seq; normalize=true, positions)
     end
     av_href, std_href = (mean(hamming_to_ref), std(hamming_to_ref))
 
@@ -84,10 +101,20 @@ function distance_to_refseq(reconstructed::DCASample, ref_seq, label="real")
     )
 end
 
-function diversity(folder::AbstractString, strat_folder, target_node::AbstractString, tree)
+function gapped_positions(X::DCASample; threshold = .25)
+    f = DCATools.profile_frequency(X)
+    gap_idx = findfirst(==('-'), X.mapping)
+    isnothing(gap_idx) && error("Problem with alphabet? Could not find gap symbol")
+    return findall(1:size(X,1)) do i
+        f[(i-1)*X.q .+ (1:X.q)][gap_idx] > threshold
+    end
+end
 
+function diversity(folder::AbstractString, strat_folder, target_node::AbstractString, tree)
     leaves_real = read_msa(joinpath(folder, "alignment_leaves.fasta"))
     aln_consensus = DCATools.consensus(leaves_real)[1]
+    ignore_columns = gapped_positions(leaves_real)
+    # @info "Ignoring columns $ignore_columns"
 
     internals_real = read_msa(joinpath(folder, "alignment_internals.fasta"))
     tarseq_real = internals_real[target_node]
@@ -122,8 +149,8 @@ function diversity(folder::AbstractString, strat_folder, target_node::AbstractSt
         "real" => tarseq_real,
     )
 
-    M_ardca = _measures(recseq_ardca, table_ardca, ref_seqs_ardca)
-    M_iqtree = _measures(iqtree_profile, ref_seqs_iqtree)
+    M_ardca = _measures(recseq_ardca, table_ardca, ref_seqs_ardca; ignore_columns)
+    M_iqtree = _measures(iqtree_profile, ref_seqs_iqtree; ignore_columns)
 
     for M in (M_iqtree, M_ardca)
         M["name"] = target_node

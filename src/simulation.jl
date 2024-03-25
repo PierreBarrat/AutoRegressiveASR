@@ -34,7 +34,7 @@ function generate_trees(
             end
             graft!(tree, TreeNode(;tau = outgroup_distance, label=outgroup_name), tree.root)
         end
-        label!(tree, tree.root, "root")
+        TreeTools.label!(tree, tree.root, "root")
         # write
         write(out * "/tree.nwk", tree)
     end

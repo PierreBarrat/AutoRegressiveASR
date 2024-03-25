@@ -6,6 +6,7 @@ using Chain
 using CSV
 using DataFrames
 using DataFramesMeta
+using Dates
 using DCATools
 using JSON3
 using StatsBase
@@ -17,7 +18,26 @@ default_strategies = [
     ("autoregressive", "Bayes"),
 ]
 
-function analyze_results_and_write(folder::AbstractString; kwargs...)
+function analyze_results_and_write(folder; kwargs...)
+    data = Dict{String, Any}("timestamp" => now())
+    @tag!(data)
+
+    # Measures of equilibrium properties of the teacher model
+    parameters = JSON3.read(open(joinpath(folder, "simulation_parameters.json"), "r"))
+    generative_model = DCAGraph(projectdir(parameters[:potts_file]))
+    aln_eq = read_msa(parameters[:sample_potts_file])
+
+    data["likelihood_eq"] = map(s -> -energy(generative_model, s), aln_eq)
+    # data["pw_hamming_eq"] =
+
+    # Measures of reconstruction quality for different strategies
+    reconstruction_data = analyze_results(folder; kwargs...)
+    data["asr"] = reconstruction_data
+
+    return data
+end
+
+function analyze_results_and_write_old(folder::AbstractString; kwargs...)
     data_all = analyze_results(folder; kwargs...)
 
     strats = collect(keys(data_all))
@@ -27,7 +47,7 @@ function analyze_results_and_write(folder::AbstractString; kwargs...)
 
     parameters = Dict(
         "strategies" => strats,
-        "timesamp" => now_string(; minute=true),
+        "timesamp" => now(),
         "filenames" => filenames,
     )
     @tag!(parameters)
