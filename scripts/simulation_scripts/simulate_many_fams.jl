@@ -14,7 +14,7 @@ families = [
         "potts" => datadir("Models", "PF00076/parameters_adaBM_PF00076.dat"),
         "sample_potts_eq" => datadir("Models", "PF00076/sample_adaBM_T200_PF00076.fasta"),
         "arnet" => datadir("Models", "PF00076/arnets/trained_on_potts/arnet_lJ0.001_lH0.0001.jld2"),
-        "nsweeps" => 15,
+        "nsweeps" => 20,
     ),
     "PF00072" => Dict(
         "prefix" => "PF00072",
@@ -41,19 +41,21 @@ families = [
 
 # Shared between families
 nleaves = 50
-ntrees = 25
-normalize_tree_heights = true
+ntrees = 50
+normalize_tree_height = true
 add_outgroup = false
 iqtree_model = "" # model finder if empty
+iqtree_model = "PMB+I+G4"
 outfolder = datadir("simulated", "potts_yule")
 
 
-# to_simulate = ["PF00014"] # for testing
-to_simulate = map(x -> x[1], families) # for all
+to_simulate = ["PF00595"] # for testing
+# to_simulate = map(x -> x[1], families) # for all
 for (name, fam) in filter(x -> x[1] in to_simulate, families)
     @info "Simulating for family $name"
     fam["nleaves"] = nleaves
     fam["ntrees"] = ntrees
+    fam["normalize_tree_height"] = normalize_tree_height
     fam["add_outgroup"] = add_outgroup
     fam["outfolder"] = outfolder
     display(fam)
@@ -67,5 +69,5 @@ for (name, fam) in filter(x -> x[1] in to_simulate, families)
     asr_ardca(fam)
     asr_ardca_sample_internals(fam)
 
-    sample_internals_and_plm(fam)
+    # sample_internals_and_plm(fam)
 end

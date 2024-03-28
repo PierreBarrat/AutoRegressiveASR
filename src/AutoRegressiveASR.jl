@@ -37,4 +37,6 @@ export ASRU, ASRUtils
 include("contact_prediction.jl")
 export ppv
 
+include("misc.jl")
+
 end # module

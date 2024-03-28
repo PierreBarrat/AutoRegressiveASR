@@ -110,6 +110,7 @@ function reconstructed_to_df(
     #= Measures =#
     labels = @chain begin
         Iterators.filter(isinternal, POT(tree))
+        Iterators.filter(!isroot, _)
         map(label, _)
         filter!(x -> haskey(reconstructed, x), _) # only consider nodes that have been reconstructed
     end
@@ -226,11 +227,17 @@ function entropy(data, label)
     else
         ASR.entropy(data.asr_state_profiles[label].model)
     end
-
 end
 
 function _isroot(data, label)
     return data.tree[label].isroot
+end
+
+function proximity_to_leaves(data, label)
+    # branch length on tree_inferred is a number of mutations
+    return sum(leaves(data.tree_inferred)) do l
+        exp(-distance(data.tree_inferred, TreeTools.label(l), label))
+    end
 end
 
 MEASURES(generative_model) = Dict(
@@ -247,6 +254,7 @@ MEASURES(generative_model) = Dict(
     :hamming_to_aln_consensus => hamming_to_aln_consensus,
     :entropy => entropy,
     :reconstructed_sequence => reconstructed_sequence,
+    :proximity_to_leaves => proximity_to_leaves,
 )
 MEASURES(::DCAGraph) = Dict(
     :node_depth => node_depth,
@@ -262,6 +270,7 @@ MEASURES(::DCAGraph) = Dict(
     :hamming_to_aln_consensus => hamming_to_aln_consensus,
     :entropy => entropy,
     :reconstructed_sequence => reconstructed_sequence,
+    :proximity_to_leaves => proximity_to_leaves,
 )
 MEASURES(::Nothing) = Dict(
     :node_depth => node_depth,
@@ -276,4 +285,5 @@ MEASURES(::Nothing) = Dict(
     # :hamming_to_model_ground_state => hamming_to_model_ground_state,
     :hamming_to_aln_consensus => hamming_to_aln_consensus,
     :reconstructed_sequence => reconstructed_sequence,
+    :proximity_to_leaves => proximity_to_leaves,
 )

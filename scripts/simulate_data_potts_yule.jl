@@ -6,6 +6,7 @@ using BackwardCoalescent
 using Dates
 using DCATools
 using JSON3
+using TreeTools
 
 function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
     ## Parameters
@@ -18,7 +19,8 @@ function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
     nleaves = parsed_args["nleaves"] # number of leaves
     nsweeps = parsed_args["nsweeps"] # desired number of MCMC sweeps between root and leaves
     L = potts.L
-    b = log(nleaves)/nsweeps/potts.L
+    T = nsweeps * potts.L # desired height
+    b = log(nleaves) / T # expected height log(nleaves)/b --> nsweeps * L
     outgroup = parsed_args["add_outgroup"]
     ntrees = parsed_args["ntrees"]
 
@@ -78,7 +80,18 @@ function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
 
     ## simulation
     dat_folder = joinpath(outfolder, "data")
-    get_tree = () -> genealogy(YuleCoalescent(nleaves, b))
+    function get_tree()
+        tree = genealogy(YuleCoalescent(nleaves, b))
+        if parsed_args["normalize_tree_height"]
+            Temp = TreeTools.distance_to_deepest_leaf(tree.root)
+            foreach(nodes(tree; skiproot = true)) do n
+                τ = branch_length(n)
+                branch_length!(n, τ * T/Temp)
+            end
+        end
+        return tree
+    end
+
     AutoRegressiveASR.generate_trees(
         dat_folder, get_tree;
         add_outgroup=outgroup,

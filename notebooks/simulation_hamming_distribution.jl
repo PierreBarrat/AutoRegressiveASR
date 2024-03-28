@@ -28,6 +28,18 @@ begin
 	using TreeTools
 end
 
+# ╔═╡ c1391eae-6dd7-4b34-a3d9-fdaa3a1f4830
+include(joinpath(homedir(), ".julia/config/plot_defaults.jl"))
+
+# ╔═╡ 2b763d1c-0863-4792-be6e-fc705e1be322
+let
+	plt_defaults = pubfig(20)
+	Plots.default(; plt_defaults...)
+end
+
+# ╔═╡ adc5c0a6-c599-4f85-bfa3-6654b4578478
+md"# Pairwise hamming distance for simulated data"
+
 # ╔═╡ 3b4abe01-a079-4ca8-95e7-94be09ecac7a
 dfs = @bind _tmp_dat Select(readdir(datadir("simulated/potts_yule")))
 
@@ -42,14 +54,11 @@ potts, sample_eq = let
 	(DCAGraph(parameters[:potts_file]), read_msa(parameters[:sample_potts_file]))
 end
 
-# ╔═╡ 40d86f59-414f-4b2a-8898-48eb6e87f660
-
-
-# ╔═╡ adc5c0a6-c599-4f85-bfa3-6654b4578478
-md"# Pairwise hamming distance for simulated data"
-
 # ╔═╡ e755a5d7-ac63-4fe1-a9a6-b399073294f3
 pw_hamming_eq = DCATools.pw_hamming_distance(sample_eq; step=5) |> ecdf
+
+# ╔═╡ 40d86f59-414f-4b2a-8898-48eb6e87f660
+figdir = mkpath(joinpath(plotsdir(), "potts_yule", basename(dat_folder)))
 
 # ╔═╡ 257ea632-a1ad-40e1-818a-a04906bc1170
 pw_hamming_trees = map(ASRU.get_tree_folders(joinpath(dat_folder, "data"))) do fol
@@ -62,12 +71,15 @@ let p = plot()
 	xvals = 0:.01:1
 	plot!(xvals, pw_hamming_eq.(xvals), label="Eq.", line=(:black))
 	for d in pw_hamming_trees
-		plot!(xvals, d.(xvals), color=1, label="")
+		plot!(xvals, d.(xvals), color=1, label="", alpha = .5, lw = 1)
 	end
 	plot!(
-		xlabel = "Hamming",
-		title = "CDF: pw hamming distance",
+		xlabel = "Hamming distance",
+		title = "Distribution of pairwise hamming distances",
 	)
+
+	savefig(p, joinpath(figdir, "pw_hamming_aln_leaves.png"))
+	p
 end
 
 # ╔═╡ a43ef7a1-cc46-4e0c-8e5d-93455d78a1f7
@@ -105,13 +117,15 @@ end
 
 # ╔═╡ Cell order:
 # ╠═a8ec28f8-c9ad-11ee-1efc-751443eb65d6
-# ╠═3b4abe01-a079-4ca8-95e7-94be09ecac7a
+# ╠═c1391eae-6dd7-4b34-a3d9-fdaa3a1f4830
+# ╠═2b763d1c-0863-4792-be6e-fc705e1be322
 # ╠═79495f33-e493-4400-9435-725793a058d3
 # ╠═da0768e4-41e7-4404-8a36-14d5978ca4dd
 # ╠═40d86f59-414f-4b2a-8898-48eb6e87f660
 # ╟─adc5c0a6-c599-4f85-bfa3-6654b4578478
 # ╠═e755a5d7-ac63-4fe1-a9a6-b399073294f3
 # ╠═257ea632-a1ad-40e1-818a-a04906bc1170
+# ╠═3b4abe01-a079-4ca8-95e7-94be09ecac7a
 # ╠═b618a701-c11b-456d-b747-c7161afb879c
 # ╟─a43ef7a1-cc46-4e0c-8e5d-93455d78a1f7
 # ╠═df59e5b6-8968-4758-b39c-5d3c6f0e1a2f
