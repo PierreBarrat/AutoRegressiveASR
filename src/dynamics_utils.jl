@@ -1,6 +1,6 @@
 function useful_callbacks()
-    h_to_i(S, x, s0, y; kwargs...) = map(s -> DCATools.hamming(s, s0), S)
-    en(S, model, s0, t; kwargs...) = map(s -> energy(model, s), S)
+    h_to_i(S, model, s0, t; kwargs...) = map(s -> DCATools.hamming(s, s0), S)
+    en(S, model, s0, t; ref_model=model) = map(s -> energy(ref_model, s), S)
     return (
         energy = en,
         hamming_to_init = h_to_i,

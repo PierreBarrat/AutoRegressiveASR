@@ -1,0 +1,57 @@
+\documentclass[a4paper,preprint]{revtex4-2}
+%\documentclass[aps,prl,preprint,superscriptaddress]{revtex4-2}
+%\documentclass[aps,prl,reprint,groupedaddress]{revtex4-2}
+% a4paper, amsfonts, amssymb, amsmath, preprint, superscriptaddress
+\usepackage{amsfonts,amssymb,amsmath}
+\usepackage{color}
+\usepackage{csvsimple}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage{lineno}
+\usepackage{microtype}      % microtypography
+\usepackage{nicefrac}   
+
+\newcommand{\pierre}[1]{{\color{red}Pierre: #1}}
+\newcommand{\sref}[1]{S\ref{#1}}
+\renewcommand{\eqref}[1]{Eq.~\ref{#1}}
+
+\begin{document}
+
+\title{Reconstruction of ancestral protein sequences using autoregressive generative models}
+
+\author{Pierre Barrat-Charlaix}
+\email[Correspondance to: PBC, DISAT]{email@univ.com}
+\affiliation{DISAT, Politecnico di Torino, Italy}
+
+\author{Andrea Pagnani}
+\affiliation{DISAT, Politecnico di Torino, Italy}
+
+\date{}
+
+\begin{abstract}
+abstract
+\end{abstract}
+
+\maketitle
+
+
+\input{contents.tex}
+
+\newpage
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\newpage
+\newpage
+\appendix
+\setcounter{figure}{0}
+\renewcommand{\figurename}{Figure S}
+\setcounter{table}{0}
+\renewcommand{\tablename}{Table S}
+\onecolumngrid
+
+\input{SI.tex}
+
+\end{document}
+

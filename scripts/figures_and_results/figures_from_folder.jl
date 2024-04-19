@@ -20,6 +20,7 @@ begin
 	using DrWatson
 	quickactivate(@__DIR__, "AutoRegressiveASR")
 
+	using ArDCA
 	using AutoRegressiveASR
 	using CSV
 	using DataFrames
@@ -40,11 +41,14 @@ let
 	Plots.default(; plt_defaults...)
 end
 
-# ╔═╡ 9faee986-bd06-477c-b0af-648394459cc4
-plt_defaults = pubfig(20)
-
 # ╔═╡ 367109e7-c4a5-46bf-8c9d-f4b6042c5cca
 md"## Picking folder"
+
+# ╔═╡ 995685dd-c102-4da8-b687-33ec6d2da667
+folder_list = vcat(
+	readdir(datadir("simulated/potts_yule"); join=true),
+	readdir(datadir("simulated/arnet_yule"); join=true),
+)
 
 # ╔═╡ ecdbbfcf-0d17-49de-9f4f-18ae0d2e85eb
 begin
@@ -75,7 +79,7 @@ md"## Branch length"
 md"## Hamming distance without gaps"
 
 # ╔═╡ 0ab653c4-95e2-4676-bfda-d5b15f3d500f
-_fs = @bind folder_full Select(readdir(datadir("simulated/potts_yule"); join=true))
+_fs = @bind folder_full Select(folder_list)
 
 # ╔═╡ f9b87a61-f1cd-4e57-a6c3-d2e6733a12ff
 folder = basename(folder_full)
@@ -112,11 +116,14 @@ simulation_parameters = JSON3.read(
 )
 
 # ╔═╡ 39a98d0e-d550-4329-8048-b0462c8bd2e2
-generative_model = simulation_parameters["potts_file"] |> DCAGraph
+generative_model = @chain begin
+	simulation_parameters["generative_model"]
+	load_generative_model
+end
 
 # ╔═╡ f4c24956-9f41-4b45-9617-ca965bcc7aab
 model_consensus = let
-	sample_file = projectdir(simulation_parameters["sample_potts_file"])
+	sample_file = projectdir(simulation_parameters["sample_equilibrium"])
 	Seq = if isnothing(sample_file) || !isfile(sample_file)
 		T = 100
 		M = 1000
@@ -132,11 +139,36 @@ end
 # ╔═╡ c71c1011-6c00-4947-ae82-2e0fa77d3446
 figdir = mkpath(joinpath(plotsdir(), "potts_yule", basename(folder_full)))
 
+# ╔═╡ af3c21ce-7042-431e-aca4-b915d0b7f616
+strategies[3]
+
+# ╔═╡ 65bf9426-1391-4621-8134-eb42e0f07c53
+data[strategies[1]].node_depth
+
+# ╔═╡ ab4a271f-469d-492f-b0eb-6814d1c88e4c
+data[strategies[2]].node_depth
+
 # ╔═╡ 63b87289-1634-44ac-8e2c-e51ac3a7c271
 md"## Hamming distance with gaps"
 
 # ╔═╡ b96f65d5-cb63-4396-967a-f190e1979dcf
 md"## Likelihood of reconstructed sequences"
+
+# ╔═╡ c8ae2ee0-1d4a-4fd5-bafa-d1a904f63d27
+let
+	xlim = extrema(data_all["likelihood_eq"])
+	p = density(
+		data_all["likelihood_eq"], line = (:black, :dash);
+		label="", yticks = [], xlim, xticks = [],
+		title = "Equilibrium",
+		titlelocation = :left,
+	)
+	
+
+	@info propertynames(p)
+
+	p[1][1][:x]
+end
 
 # ╔═╡ 70b1c534-5f41-47f0-8fec-27201b0325d9
 md"## Hamming distance to consensus"
@@ -147,14 +179,49 @@ md"## Functions & Misc"
 # ╔═╡ 32ed2718-5cbc-4049-b66e-764f88aee027
 begin
 	# for histograms of likelihood
-	deepnode = "internal_48"
+	deepnode = "internal_98"
 end
 
 # ╔═╡ 471f444a-7de5-4399-baba-8d189ed06670
 begin
 	# smoothing width
-	w = 10
+	w = 20
+	outliers_right = 0.
 	smoothing_alg = :hist
+end
+
+# ╔═╡ be7733a6-bf2a-4e9e-9ea0-2e52e7339c43
+let p = plot()
+	S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
+	D1 = sort(data[S1], :node_depth)
+	D2 = sort(data[S2], :node_depth)
+	X = D1.node_depth
+	# Y ~ iqtree - autoregressive, hopefuly positive
+	Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap
+
+	x, y, ystd, N = ASRU.easy_smooth(
+		X, Y; w, alg=smoothing_alg, outliers_right, 
+	)
+	yerr = ystd ./ sqrt.(N)
+	plot!(
+		x, y; 
+		ribbon = yerr, fillalpha=.2,
+	)
+	
+	plot!(
+		xlabel = "Node depth (mcmc steps)",
+		ylabel = "Hamming distance to real",
+		frame = :box,
+		legend = :bottomright,
+	)
+
+	savefig(joinpath(figdir, "hamming_to_real_ML_nogaps.png"))
+	p
+end
+
+# ╔═╡ 50f02f81-3ac8-40ff-9748-e64c4847f7de
+begin
+	# plot style
 	pal = palette(:default)
 	strat_clr = Dict{Any,Any}(
 		"iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3]
@@ -201,14 +268,18 @@ end
 # ╔═╡ 085563cb-c3c4-4b28-bac6-ec58f79e4acf
 let p = plot()
 	for (i, strat) in enumerate(ml(strategies))
-		x, y = ASRU.easy_smooth(
+		x, y, ystd, N = ASRU.easy_smooth(
             data[strat], :node_depth, :node_depth_inferred; w, alg=smoothing_alg,
         )
-		plot!(x, y, label=label2(strat), color=i, line=(3))
+		yerr = ystd ./ sqrt.(N)
+		plot!(
+			x, y; 
+			ribbon = yerr, fillalpha=.2, label=label2(strat), line=linestyle(strat)
+		)
 	end
 	
 	plot!(
-		xlabel = "Real node depth (mcmc steps)",
+		xlabel = "Real node depth",
 		ylabel = "Inferred node depth",
 		title = "$title_id - Inferred node depth",
 		frame = :box,
@@ -222,10 +293,12 @@ end
 # ╔═╡ 8f6a4029-04e8-40f8-8dcd-144d5ede6c77
 plt_hamming_to_real_nogaps = let p = plot()
 	for strat in reconstruction(strategies)
-		x, y = ASRU.easy_smooth(
-			data[strat], :node_depth, :hamming_to_real_nogap; w, alg=smoothing_alg,
+		x, y, ystd, N = ASRU.easy_smooth(
+			data[strat], :node_depth, :hamming_to_real_nogap; 
+			w, alg=smoothing_alg, outliers_right = 0.0,
 		)
-		plot!(x, y, label=label2(strat), line=linestyle(strat))
+		
+		plot!(x, y, label=label2(strat), line=linestyle(strat))	
 	end
 	
 	plot!(
@@ -243,10 +316,15 @@ end
 # ╔═╡ c923e195-9628-4829-868b-dbb0ee6bf4dd
 plt_hamming_to_real_nogaps_ml = let p = plot()
 	for strat in ml(strategies)
-		x, y = ASRU.easy_smooth(
-			data[strat], :node_depth, :hamming_to_real_nogap; w, alg=smoothing_alg,
+		x, y, ystd, N = ASRU.easy_smooth(
+			data[strat], :node_depth, :hamming_to_real_nogap; 
+			w, alg=smoothing_alg, outliers_right, 
 		)
-		plot!(x, y, label=label2(strat), line=linestyle(strat))
+		yerr = ystd ./ sqrt.(N)
+		plot!(
+			x, y; 
+			ribbon = yerr, fillalpha=.2, label=label2(strat), line=linestyle(strat)
+		)
 	end
 	
 	plot!(
@@ -376,19 +454,42 @@ plt_likelihood_ml = let p = plot()
 		plot!(x, y, label=label2(strat), line=linestyle(strat))
 	end
 
-	hline!([mean(data_all["likelihood_eq"])], line = (2, :black, :dash), label="")
+	# hline!([mean(data_all["likelihood_eq"])], line = (2, :black, :dash), label="")
+
+	lk_lim = let
+		r, l = (1.15, 4)
+		xmin, xmax = extrema(data_all["likelihood_eq"])
+		mid = (xmax + xmin)/2
+		mid - (mid - xmin)/l, mid + (xmax - mid)/r
+	end
+	density_lk_eq = let
+		plt = density(data_all["likelihood_eq"]; xlim=lk_lim)
+		x, y = plt[1][1][:x], plt[1][1][:y]
+		plot(
+			y, x; 
+			ylim=lk_lim, label="", xticks = [], yticks = [], line=(3, :black),
+			frame=:no, xaxis=false, fill=true, fillcolor = :black, fillalpha=.1
+		)
+	end
 	
-	plot!(
+	plot!(p; 
 		xlabel = "Node depth (mcmc steps)",
 		ylabel = "Likelihood",
 		title = "$title_id - Likelihood",
 		frame = :box,
 		legend = :topleft,
+		ylim = lk_lim,
 	)
 
 	savefig(joinpath(figdir, "likelihood_v_depth_ML.png"))
 
 	p
+	density_lk_eq
+
+	plot(
+		p, density_lk_eq;
+		layout = @layout [a{0.91w} _ b{0.15w}]
+	)
 end
 
 # ╔═╡ 41dbf0f5-8471-4d7d-901d-dd63b63783d2
@@ -504,8 +605,8 @@ end
 # ╠═157c8ab0-d63d-11ee-3794-27a66b691088
 # ╠═7ebf97e2-fcca-4420-a01b-835de467ef89
 # ╠═c6d4a813-23f9-48a3-8418-398d94886da4
-# ╠═9faee986-bd06-477c-b0af-648394459cc4
 # ╟─367109e7-c4a5-46bf-8c9d-f4b6042c5cca
+# ╠═995685dd-c102-4da8-b687-33ec6d2da667
 # ╠═f9b87a61-f1cd-4e57-a6c3-d2e6733a12ff
 # ╠═6ebfeb60-837f-45e7-a918-bcbc91add5a2
 # ╟─ecdbbfcf-0d17-49de-9f4f-18ae0d2e85eb
@@ -525,16 +626,21 @@ end
 # ╟─04ab3d51-0c30-4bd9-b08a-0c7e0540f3b1
 # ╠═0ab653c4-95e2-4676-bfda-d5b15f3d500f
 # ╟─8f6a4029-04e8-40f8-8dcd-144d5ede6c77
-# ╟─c923e195-9628-4829-868b-dbb0ee6bf4dd
+# ╠═c923e195-9628-4829-868b-dbb0ee6bf4dd
+# ╠═be7733a6-bf2a-4e9e-9ea0-2e52e7339c43
+# ╠═af3c21ce-7042-431e-aca4-b915d0b7f616
+# ╠═65bf9426-1391-4621-8134-eb42e0f07c53
+# ╠═ab4a271f-469d-492f-b0eb-6814d1c88e4c
 # ╟─63b87289-1634-44ac-8e2c-e51ac3a7c271
 # ╟─6d13312e-f1cf-4d25-9eaa-6784ee6386f6
 # ╟─90467c05-4704-4903-8faa-076ab1461c4d
-# ╟─71613c45-8a7d-42ea-88bc-b4d5132f6a65
+# ╠═71613c45-8a7d-42ea-88bc-b4d5132f6a65
 # ╟─103932ee-7c76-44f0-a5cb-78a141687996
 # ╟─b96f65d5-cb63-4396-967a-f190e1979dcf
 # ╟─d13b857a-4071-4f96-816e-ea7949b3581c
 # ╟─c28c28dd-0e08-4e56-80d5-f0346b6ae6da
-# ╟─4d76765d-db0d-465c-a56b-b75440dd2f0d
+# ╠═c8ae2ee0-1d4a-4fd5-bafa-d1a904f63d27
+# ╠═4d76765d-db0d-465c-a56b-b75440dd2f0d
 # ╟─8ed5f31a-515d-4562-b42e-74673e2ae15a
 # ╟─70b1c534-5f41-47f0-8fec-27201b0325d9
 # ╟─41dbf0f5-8471-4d7d-901d-dd63b63783d2
@@ -542,6 +648,7 @@ end
 # ╟─26f9e913-0b55-4d2f-9109-492787d386c6
 # ╠═32ed2718-5cbc-4049-b66e-764f88aee027
 # ╠═471f444a-7de5-4399-baba-8d189ed06670
+# ╠═50f02f81-3ac8-40ff-9748-e64c4847f7de
 # ╠═3fa3dd10-edbb-4ffe-94ec-55f665ba62b4
 # ╠═2f154675-181a-40bf-9f2f-0b147cd4a4e2
 # ╠═7e189ca9-5bc9-402f-8f40-577a971d9016

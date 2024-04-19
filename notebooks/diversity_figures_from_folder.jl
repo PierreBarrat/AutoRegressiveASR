@@ -37,14 +37,17 @@ begin
 	Plots.default(; plt_defaults...)
 end
 
-# ╔═╡ 13fef31f-abaa-4e94-917b-943b1b92901d
-DIV = pluto_ingredients(scriptsdir("figures_and_results/diversity_functions.jl"))
-
-# ╔═╡ 53a0574f-8def-49f3-b909-01465c5e8c26
-md"# Figures"
+# ╔═╡ ff76b7c6-1990-4ddf-bf92-f9e679028cc3
+folders = vcat(
+	readdir(datadir("simulated/potts_yule"); join=true),
+	readdir(datadir("simulated/arnet_yule"); join=true),
+)
 
 # ╔═╡ 7990e53e-27cc-4d31-9d1b-c2c172d20d5c
-_fs = @bind folder_full Select(readdir(datadir("simulated/potts_yule"); join=true))
+folder_picker = @bind folder_full Select(folders)
+
+# ╔═╡ 13fef31f-abaa-4e94-917b-943b1b92901d
+DIV = pluto_ingredients(scriptsdir("figures_and_results/diversity_functions.jl"))
 
 # ╔═╡ 1e74de0b-656a-4341-a655-ebf8719de9fe
 title_id = let
@@ -68,6 +71,12 @@ data, filename = produce_or_load(
    data = DIV.diversity_data(config["basefolder"], config["out"])
 end;
 
+# ╔═╡ 5beced16-378f-4a5f-ade3-1b4eef210c9b
+figdir = mkpath(joinpath(plotsdir(), "potts_yule", basename(folder_full)))
+
+# ╔═╡ 53a0574f-8def-49f3-b909-01465c5e8c26
+md"# Figures"
+
 # ╔═╡ 716af069-d904-4d5b-af49-d01c59949ec5
 M = let
 	M1 = @select data["iqtree"] @byrow :M = :Meff / :Meff_scaled
@@ -80,9 +89,6 @@ M = let
 	length(M) > 1 && @warn "Is M well defined? $M"
 	M[1]
 end
-
-# ╔═╡ 5beced16-378f-4a5f-ade3-1b4eef210c9b
-figdir = mkpath(joinpath(plotsdir(), "potts_yule", basename(folder_full)))
 
 # ╔═╡ de5239e6-c7b2-4e8f-a003-cd55fe3ef2c7
 md"## Misc"
@@ -188,6 +194,8 @@ end
 # ╠═988a4668-d718-11ee-1816-b73ece48c950
 # ╠═3a06c22c-bbfe-41c1-9b68-26482fc1cc34
 # ╠═79db37a3-ed65-41f0-9e95-275bf7fac3a2
+# ╠═ff76b7c6-1990-4ddf-bf92-f9e679028cc3
+# ╠═7990e53e-27cc-4d31-9d1b-c2c172d20d5c
 # ╠═13fef31f-abaa-4e94-917b-943b1b92901d
 # ╠═1e74de0b-656a-4341-a655-ebf8719de9fe
 # ╠═7c3a2726-4925-4ed6-b8fc-dcc02f8f466d
@@ -197,7 +205,6 @@ end
 # ╟─53a0574f-8def-49f3-b909-01465c5e8c26
 # ╟─716af069-d904-4d5b-af49-d01c59949ec5
 # ╟─e97ccac2-c5f1-4866-8d85-7f2a78dc691d
-# ╠═7990e53e-27cc-4d31-9d1b-c2c172d20d5c
 # ╟─fe2bc5ee-1f28-4cdd-8521-1394f96f7faa
 # ╟─6fcabb5d-d54b-4428-b04e-3158e6aecfb7
 # ╠═789e5665-173e-45af-8af2-2a194001fb95

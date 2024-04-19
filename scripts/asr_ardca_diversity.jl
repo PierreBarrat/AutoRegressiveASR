@@ -5,6 +5,7 @@ using AncestralSequenceReconstruction
 using ArDCA
 using AutoRegressiveASR
 using Dates
+using IterTools
 using JLD2
 using JSON3
 
@@ -24,7 +25,7 @@ function asr_ardca_sample_internals(;
     evo_profile = ASR.ProfileModel(arnet)
 
     # Reconstruction strategies
-    opt_bl = :opt
+    opt_bl = :copy # the normal autoregressive run was done before, just get tree from there
     strategy_infer_bl = ASRMethod(; joint=false, optimize_branch_length_cycles=2, verbosity=2)
     strategy_ml = ASRMethod(; joint=false, ML=true, optimize_branch_length=false, verbosity=2)
     strategy_bayes = ASRMethod(;
@@ -48,7 +49,7 @@ function asr_ardca_sample_internals(;
     # Reconstruct on real tree using AR model
     @info "Reconstruction using ASR"
     performed = false
-    for fol in ASRU.get_tree_folders(dat_folder)
+    for fol in takenth(ASRU.get_tree_folders(dat_folder), 5)
         @info fol
         if isdir(joinpath(fol, prefix))
             if force
@@ -79,6 +80,11 @@ function asr_ardca_sample_internals(;
                 evo_profile,
                 strategy_infer_bl;
                 outnewick = joinpath(fol, prefix, "tree_inferred.nwk"),
+            )
+        elseif opt_bl == :copy
+            cp(
+                joinpath(fol, "autoregressive/tree_inferred.nwk"),
+                joinpath(fol, prefix, "tree_inferred.nwk")
             )
         else
             @info "Not touching branch length"

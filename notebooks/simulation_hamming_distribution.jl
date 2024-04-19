@@ -40,18 +40,27 @@ end
 # ╔═╡ adc5c0a6-c599-4f85-bfa3-6654b4578478
 md"# Pairwise hamming distance for simulated data"
 
+# ╔═╡ 026ba3fd-65dd-4d4d-bdc1-79761d17b47c
+folder_list = vcat(
+	readdir(datadir("simulated/arnet_yule"); join=true),
+	readdir(datadir("simulated/potts_yule"); join=true),
+)
+
 # ╔═╡ 3b4abe01-a079-4ca8-95e7-94be09ecac7a
-dfs = @bind _tmp_dat Select(readdir(datadir("simulated/potts_yule")))
+folder_picker = @bind _tmp_dat Select(folder_list)
 
 # ╔═╡ 79495f33-e493-4400-9435-725793a058d3
-dat_folder = datadir("simulated/potts_yule", _tmp_dat)
+dat_folder = datadir("simulated/arnet_yule", _tmp_dat)
 
 # ╔═╡ da0768e4-41e7-4404-8a36-14d5978ca4dd
 potts, sample_eq = let
 	parameters = JSON3.read(
 		open(joinpath(dat_folder, "simulation_parameters.json"), "r"), 
 	)
-	(DCAGraph(parameters[:potts_file]), read_msa(parameters[:sample_potts_file]))
+	(
+		nothing, #DCAGraph(parameters[:generative_model]), 
+		read_msa(parameters[:sample_equilibrium])
+	)
 end
 
 # ╔═╡ e755a5d7-ac63-4fe1-a9a6-b399073294f3
@@ -115,16 +124,32 @@ let p = plot()
 	)
 end
 
+# ╔═╡ 4c8eadbb-2a4b-4da4-bd80-696b58d4015e
+	parameters = JSON3.read(
+		open(joinpath(dat_folder, "simulation_parameters.json"), "r"), 
+	)
+
+# ╔═╡ a930c0ac-03db-4cc9-a670-a3881601f41b
+# ╠═╡ disabled = true
+#=╠═╡
+	parameters = JSON3.read(
+		open(joinpath(dat_folder, "simulation_parameters.json"), "r"), 
+	) |> keys |> collect
+  ╠═╡ =#
+
 # ╔═╡ Cell order:
 # ╠═a8ec28f8-c9ad-11ee-1efc-751443eb65d6
 # ╠═c1391eae-6dd7-4b34-a3d9-fdaa3a1f4830
 # ╠═2b763d1c-0863-4792-be6e-fc705e1be322
 # ╠═79495f33-e493-4400-9435-725793a058d3
 # ╠═da0768e4-41e7-4404-8a36-14d5978ca4dd
+# ╠═4c8eadbb-2a4b-4da4-bd80-696b58d4015e
 # ╠═40d86f59-414f-4b2a-8898-48eb6e87f660
+# ╠═a930c0ac-03db-4cc9-a670-a3881601f41b
 # ╟─adc5c0a6-c599-4f85-bfa3-6654b4578478
 # ╠═e755a5d7-ac63-4fe1-a9a6-b399073294f3
 # ╠═257ea632-a1ad-40e1-818a-a04906bc1170
+# ╠═026ba3fd-65dd-4d4d-bdc1-79761d17b47c
 # ╠═3b4abe01-a079-4ca8-95e7-94be09ecac7a
 # ╠═b618a701-c11b-456d-b747-c7161afb879c
 # ╟─a43ef7a1-cc46-4e0c-8e5d-93455d78a1f7

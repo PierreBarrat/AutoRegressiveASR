@@ -161,16 +161,16 @@ function easy_smooth(x, y; w = 25, alg=:sma, outliers_left = 0., outliers_right 
     idx = exclude_outliers_perm(x; left=outliers_left, right=outliers_right)
     xs = x[idx]
     ys = y[idx]
-    (xsmth, ysmth) = if alg == :loess
-        xs, loess(xs, ys; q=w)(xs)
+    (xsmth, ysmth, ystd, nsamples) = if alg == :loess
+        xs, loess(xs, ys; q=w)(xs), nothing, nothing
     elseif alg == :sma
-        xs, sma(ys, w, true)
+        xs, sma(ys, w, true), nothing, nothing
     elseif alg == :hist
         hist_smooth(xs, ys; nbins=w, outliers_left=0., outliers_right=0.) #outliers already removed
     else
         error("Unknwon smoothing alg $alg. ")
     end
-    return collect.(skipmissings(xsmth, ysmth))
+    return collect.(skipmissings(xsmth, ysmth, ystd, nsamples))
     # return collect.(skipmissings(xs, sma(ys, w, true)))
 end
 easy_smooth(df::DataFrame, f1, f2; kwargs...) = easy_smooth(df[!, f1], df[!, f2]; kwargs...)
@@ -188,8 +188,17 @@ function hist_smooth(x, y; nbins=100, outliers_left=0., outliers_right = .05)
         ilow = i == 1 ? 1 : summed_weights[i-1]
         mean(ys[ilow:summed_weights[i]])
     end
+    y_std = map(1:nbins) do i
+        ilow = i == 1 ? 1 : summed_weights[i-1]
+        std(ys[ilow:summed_weights[i]])
+    end
+    nsamples = map(1:nbins) do i
+        ilow = i == 1 ? 1 : summed_weights[i-1]
+        length(ys[ilow:summed_weights[i]])
+    end
+
     bin_centers = (edges[1:end-1] .+ edges[2:end])/2
-    return bin_centers, y_av
+    return bin_centers, y_av, y_std, nsamples
 end
 
 function exclude_outliers_perm(x; left = 0., right = 0.)

@@ -13,6 +13,7 @@ end
 using AutoRegressiveASR
 using ArDCA
 using Chain
+using Dates
 using DCATools # necessary for "-A...Y" mapping
 using DelimitedFiles
 using JLD2
@@ -35,8 +36,7 @@ weight_file = isfile(weight_file) ? weight_file : nothing
 isnothing(weight_file) && @info "No weights found, will compute them."
 
 ## Parameters for learning log
-timestamp = now_string(; minute=true)
-# script = relpath(abspath(@__FILE__), projectdir())
+timestamp = now()
 parameters = @dict(
     fastafile, weight_file, timestamp#, script
 )
@@ -47,7 +47,8 @@ S = read_msa(fastafile) |> unique
 w = isnothing(weight_file) ? computeweights(S) : vec(readdlm(weight_file))
 w = w/sum(w)
 
-λvals = [1e-2, 1e-3, 1e-4]
+# λvals = [1e-2, 1e-3, 1e-4]
+λvals = [1e-2]
 
 for λ in λvals
     @info "Infering arnet for $fastafile (weights $weight_file) and regularization $λ"

@@ -8,6 +8,7 @@ using DataFrames
 using DataFramesMeta
 using Dates
 using DCATools
+using JLD2
 using JSON3
 using StatsBase
 
@@ -24,10 +25,10 @@ function analyze_results_and_write(folder; kwargs...)
 
     # Measures of equilibrium properties of the teacher model
     parameters = JSON3.read(open(joinpath(folder, "simulation_parameters.json"), "r"))
-    generative_model = DCAGraph(projectdir(parameters[:potts_file]))
-    aln_eq = read_msa(parameters[:sample_potts_file])
+    generative_model = load_generative_model(projectdir(parameters[:generative_model]))
+    aln_eq = read_msa(parameters[:sample_equilibrium])
 
-    data["likelihood_eq"] = map(s -> -energy(generative_model, s), aln_eq)
+    data["likelihood_eq"] = map(s -> ASRU.myloglikelihood(s, generative_model), aln_eq)
     # data["pw_hamming_eq"] =
 
     # Measures of reconstruction quality for different strategies
@@ -37,28 +38,7 @@ function analyze_results_and_write(folder; kwargs...)
     return data
 end
 
-function analyze_results_and_write_old(folder::AbstractString; kwargs...)
-    data_all = analyze_results(folder; kwargs...)
 
-    strats = collect(keys(data_all))
-    filenames = map(strats) do S
-        "data" * mapreduce(s -> "_"*s, *, S) * ".csv"
-    end
-
-    parameters = Dict(
-        "strategies" => strats,
-        "timesamp" => now(),
-        "filenames" => filenames,
-    )
-    @tag!(parameters)
-    JSON3.pretty(open(joinpath(folder, "analyze_results_log.json"), "w"), parameters)
-
-    for (fn, data) in zip(filenames, values(data_all))
-        CSV.write(joinpath(folder, fn), data)
-    end
-
-    return map(x -> joinpath(folder, x), filenames)
-end
 
 function analyze_results(
     folder::AbstractString;
@@ -67,9 +47,9 @@ function analyze_results(
     !isabspath(folder) && (folder = projectdir(folder))
     # retrieving generative model and sample
     parameters = JSON3.read(open(joinpath(folder, "simulation_parameters.json"), "r"))
-    generative_model = DCAGraph(projectdir(parameters[:potts_file]))
+    generative_model = load_generative_model(projectdir(parameters[:generative_model]))
 
-    eq_sample_file = projectdir(parameters[:sample_potts_file])
+    eq_sample_file = projectdir(parameters[:sample_equilibrium])
     sample_eq, model_consensus = if isfile(eq_sample_file)
         aln = read_msa(eq_sample_file)
         cons = DCATools.consensus(aln)
@@ -160,3 +140,29 @@ function reconstruction_results(
         end
     end
 end
+
+
+
+
+# function analyze_results_and_write_old(folder::AbstractString; kwargs...)
+#     data_all = analyze_results(folder; kwargs...)
+
+#     strats = collect(keys(data_all))
+#     filenames = map(strats) do S
+#         "data" * mapreduce(s -> "_"*s, *, S) * ".csv"
+#     end
+
+#     parameters = Dict(
+#         "strategies" => strats,
+#         "timesamp" => now(),
+#         "filenames" => filenames,
+#     )
+#     @tag!(parameters)
+#     JSON3.pretty(open(joinpath(folder, "analyze_results_log.json"), "w"), parameters)
+
+#     for (fn, data) in zip(filenames, values(data_all))
+#         CSV.write(joinpath(folder, fn), data)
+#     end
+
+#     return map(x -> joinpath(folder, x), filenames)
+# end

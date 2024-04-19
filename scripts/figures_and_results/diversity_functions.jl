@@ -180,7 +180,12 @@ function _diversity(folder::AbstractString, strategy = "autoregressive_diversity
 end
 
 function diversity_data(basefolder::AbstractString, outfile::AbstractString = "diversity_data.jld2")
-    df_tuples = map(_diversity, ASRU.get_tree_folders(projectdir(basefolder, "data")))
+    strategy = "autoregressive_diversity/Bayes"
+    folders = filter(ASRU.get_tree_folders(projectdir(basefolder, "data"))) do f
+        isdir(joinpath(f, strategy))
+    end
+
+    df_tuples = map(f -> _diversity(f, strategy), folders)
     data = Dict{String,Any}("timestamp" => now())
     data["ardca"] = mapreduce(x -> x.asr, vcat, df_tuples)
     data["iqtree"] = mapreduce(x -> x.iqtree, vcat, df_tuples)

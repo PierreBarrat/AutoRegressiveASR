@@ -8,37 +8,39 @@ using DCATools
 using JSON3
 using TreeTools
 
-function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
+function simulate_data_ardca_yule(parsed_args::AbstractDict; force=false)
     ## Parameters
-    # Potts model
-    potts_file = parsed_args["generative_model"] |> abspath
-    sample_potts_file = parsed_args["sample_equilibrium"]
-    potts = DCAGraph(potts_file)
+    # Arnet model
+    arnet_file = parsed_args["generative_model"]
+    arnet = JLD2.load(arnet_file)["arnet"]
+    sample_arnet_file = parsed_args["sample_equilibrium"]
 
     # Genealogy
     nleaves = parsed_args["nleaves"] # number of leaves
-    nsweeps = parsed_args["nsweeps"] # desired number of MCMC sweeps between root and leaves
-    L = potts.L
-    T = nsweeps * potts.L # desired height
-    b = log(nleaves) / T # expected height log(nleaves)/b --> nsweeps * L
+    treeheight = parsed_args["treeheight"]
+     # KingmanCoalescent(n, N) or YuleCoalescent(n, b) -- tree height normalized after
+    coalescent = parsed_args["coalescent"](nleaves, 1)
+
     outgroup = parsed_args["add_outgroup"]
     ntrees = parsed_args["ntrees"]
     nsim_per_tree = parsed_args["nsim_per_tree"]
 
+
     # Out folder
+    opt_bl = parsed_args["asr_opt_bl"]
     timestamp = now()
     reps = nsim_per_tree
-    generative_model = potts_file
-    sample_equilibrium = sample_potts_file
+    generative_model = arnet_file
+    sample_equilibrium = sample_arnet_file
     parameters = @dict(
         generative_model, sample_equilibrium,
-        nleaves, nsweeps, ntrees, reps, b, outgroup,
+        nleaves, treeheight, ntrees, reps, b, outgroup, opt_bl,
         timestamp,
     )
     @tag!(parameters)
     identifier = savename(
         parsed_args["prefix"], parameters;
-        accesses = [:nleaves, :nsweeps, :ntrees, :reps],
+        accesses = [:nleaves, :treeheight, :ntrees, :opt_bl],
         sort = true,
     )
     outfolder = joinpath(parsed_args["outfolder"], identifier)
@@ -61,20 +63,20 @@ function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
     mkpath(outfolder)
 
     # Setting up folders
-    @info "Using Potts model in $(project_path(potts_file))"
+    @info "Using ArNet model in $(project_path(arnet_file))"
     @info "Results saved in $(project_path(outfolder))"
 
-    if isfile(sample_potts_file)
+    if isfile(sample_arnet_file)
         try
-            cp(sample_potts_file, joinpath(outfolder, basename(sample_potts_file)))
+            cp(sample_arnet_file, joinpath(outfolder, basename(sample_arnet_file)))
         catch err
-            @info """Tried to copy $sample_potts_file to $outfolder but got error $err
+            @info """Tried to copy $sample_arnet_file to $outfolder but got error $err
             Maybe the file already existed"""
         end
-    elseif isempty(sample_potts_file)
+    elseif isempty(sample_arnet_file)
         @info "No sample file given"
     else
-        @warn "Could not find file $(abspath(sample_potts_file)) containing eq. sample of potts"
+        @warn "Could not find file $(abspath(sample_arnet_file)) containing eq. sample of arnet"
     end
 
 
@@ -90,7 +92,7 @@ function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
             Temp = TreeTools.distance_to_deepest_leaf(tree.root)
             foreach(nodes(tree; skiproot = true)) do n
                 τ = branch_length(n)
-                branch_length!(n, τ * T/Temp)
+                branch_length!(n, τ * treeheight/Temp)
             end
         end
         return tree
@@ -104,7 +106,7 @@ function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
         M = nsim_per_tree,
     )
     foreach(ASRU.get_tree_folders(dat_folder)) do fol
-        AutoRegressiveASR.simulate_sequences(fol, potts)
+        AutoRegressiveASR.simulate_sequences(fol, arnet)
     end
 
     @info "OUTPUT DIRECTORY $(abspath(outfolder))"
@@ -159,11 +161,11 @@ function simulate_sequences(
     prefix = "",
     kwargs...
 )
-    tree = read_tree(folder * "/" * tree_file)
+    tree = read_tree(joinpath(folder,tree_file))
     return evolve(
         tree, model;
-        leaves_fasta = folder * "/" * prefix *"/" * leaves_fasta,
-        internals_fasta = folder * "/" * prefix *"/"* internals_fasta,
+        leaves_fasta = joinpath(folder, prefix, leaves_fasta),
+        internals_fasta = joinpath(folder, prefix, internals_fasta),
         kwargs...
     )
 end

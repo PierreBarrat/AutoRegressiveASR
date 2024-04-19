@@ -16,8 +16,8 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
     evo_profile = ASR.ProfileModel(arnet)
 
     # Reconstruction strategies
-    opt_bl = :opt
-    strategy_infer_bl = ASRMethod(; joint=false, optimize_branch_length_cycles=2, verbosity=2)
+    optbl = parsed_args["asr_opt_bl"]
+    strategy_infer_bl = ASRMethod(; joint=false, optimize_branch_length_cycles=5, verbosity=2)
     strategy_ml = ASRMethod(; joint=false, ML=true, optimize_branch_length=false, verbosity=2)
     strategy_bayes = ASRMethod(;
         joint=false, ML=false, repetitions = 10, optimize_branch_length=false, verbosity=2,
@@ -42,7 +42,7 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
         mkpath(joinpath(fol, prefix));
         performed = true
         # reinfer branch length
-        if opt_bl == :opt
+        if optbl == :opt
             @info "Optimizing branch length starting from iqtree's tree"
             ASR.optimize_branch_length(
                 joinpath(fol, "iqtree/tree_inferred.nwk"),
@@ -51,7 +51,15 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
                 strategy_infer_bl;
                 outnewick = joinpath(fol, prefix, "tree_inferred.nwk"),
             )
-        elseif opt_bl == :scale
+        elseif optbl == :fromreal
+            ASR.optimize_branch_length(
+                joinpath(fol, "tree.nwk"),
+                joinpath(fol, "alignment_leaves.fasta"),
+                evo_profile,
+                strategy_infer_bl;
+                outnewick = joinpath(fol, prefix, "tree_inferred.nwk"),
+            )
+        elseif optbl == :scale
             @info "Optimizing branch scale using the original tree"
             ASR.optimize_branch_scale(
                 joinpath(fol, "tree.nwk"),
@@ -61,6 +69,10 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
                 outnewick = joinpath(fol, prefix, "tree_inferred.nwk"),
             )
         else
+            cp(
+                joinpath(fol, "tree.nwk"),
+                joinpath(fol, prefix, "tree_inferred.nwk")
+            )
             @info "Not touching branch length"
         end
 
@@ -89,7 +101,7 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
             arnet_file,
             timestamp,
             prefix,
-            opt_bl,
+            optbl,
             strategy_infer_bl,
             strategy_ml,
             strategy_bayes,

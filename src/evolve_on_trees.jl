@@ -57,7 +57,7 @@ function evolve(
     tree::Tree, arnet::ArDCA.ArNet;
     alphabet = ASR.aa_alphabet, leaves_fasta="", internals_fasta="", root_seq = nothing,
 )
-    @info "Simulating using `AutoRegressiveASR` functions"
+    @info "Simulating using `AutoRegressiveASR` functions -- ArNet model"
     s0 = isnothing(root_seq) ? ArDCA.sample(arnet, 1) |> vec : root_seq
     leaf_sequences, internal_sequences = evolve_tree(tree, s0, arnet, 1)
     # write sequences to fasta if asked

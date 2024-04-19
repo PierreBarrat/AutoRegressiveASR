@@ -59,6 +59,10 @@ function asr_iqtree(parsed_args::AbstractDict; force=false)
             ML = false,
             alphabet = ASRU.AA_IQTREE_ALPHABET,
         )
+
+        if get(parsed_args, "remove_iqtree_statefile", false)
+            rm(joinpath(fol, dir_prefix, iqtree_prefix * ".state"))
+        end
     end
 
     # Writing parameters

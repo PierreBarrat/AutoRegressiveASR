@@ -146,6 +146,15 @@ function node_depth_inferred(data, label)
     end
 end
 
+branch_length_real(data, label) = TreeTools.branch_length(data.tree[label])
+function branch_length_inferred(data, label)
+    return if isnothing(data.tree_inferred)
+        missing
+    else
+        TreeTools.branch_length(data.tree_inferred[label])
+    end
+end
+
 reconstructed_sequence(data, label) = data.reconstructed_sequences[label]
 
 myloglikelihood(S, g::DCAGraph) = -DCATools.energy(g, S)
@@ -243,6 +252,8 @@ end
 MEASURES(generative_model) = Dict(
     :node_depth => node_depth,
     :node_depth_inferred => node_depth_inferred,
+    :branch_length_real => branch_length_real,
+    :branch_length_inferred => branch_length_inferred,
     :root => _isroot,
     :loglikelihood => loglikelihood,
     :hamming_to_real => hamming_to_real,
@@ -259,6 +270,8 @@ MEASURES(generative_model) = Dict(
 MEASURES(::DCAGraph) = Dict(
     :node_depth => node_depth,
     :node_depth_inferred => node_depth_inferred,
+    :branch_length_real => branch_length_real,
+    :branch_length_inferred => branch_length_inferred,
     :root => _isroot,
     :loglikelihood => loglikelihood,
     :hamming_to_real => hamming_to_real,
@@ -275,6 +288,8 @@ MEASURES(::DCAGraph) = Dict(
 MEASURES(::Nothing) = Dict(
     :node_depth => node_depth,
     :node_depth_inferred => node_depth_inferred,
+    :branch_length_real => branch_length_real,
+    :branch_length_inferred => branch_length_inferred,
     :root => _isroot,
     # :loglikelihood => loglikelihood,
     :hamming_to_real => hamming_to_real,

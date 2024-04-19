@@ -15,3 +15,17 @@ function pluto_ingredients(path::String)
              :(include($path))))
     m
 end
+
+function load_generative_model(file::AbstractString)
+    ext = splitext(file)[2]
+    return if ext == ".jld2"
+        @info "Assume $(basename(file)) is an `ArNet`"
+        JLD2.load(file)["arnet"]
+    else
+        @info "Assume $(basename(file)) is a `DCAGraph`"
+        DCAGraph(file)
+    end
+end
+
+# loglikelihood(sequence, model::DCAGraph) = -DCAToosl.energy(model, sequence)
+# loglikelihood(sequence, model::ArNet) = ArDCA.loglikelihood(sequence, model)
