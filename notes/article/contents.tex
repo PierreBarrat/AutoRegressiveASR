@@ -112,6 +112,36 @@ However, a disadvantage is that the technique is only applicable to a given prot
 
 \subsubsection{Ancestral sequence reconstruction}
 
+We illustrate the advantages of the proposed sequence evolution model by applying it to the task of ancestral sequence reconstruction (ASR). 
+The goal of ASR is the following: given a set of extant sequences with a shared evolutionary history and the corresponding phylogenetic tree, is it possible to reconstruct the sequences of extinct ancestors at the internal nodes of the tree? 
+One faces two difficulties when evaluating the capacity of a model to perform ASR. 
+The first is that in the case of biological data, the real phylogeny and ancestral sequences are not usually not known. 
+As a consequence, one must rely on simulated data. 
+The second is that for internal nodes that are sufficiently remote from the leaves, reconstruction of the exact ancestor is a hopeless task as the uncertainty then becomes high. 
+This means that it is only possible to make a statistical assessment about the quality of a reconstruction. 
+
+To test our approach, we adopt the following setup. 
+We first generate phylogenetic trees by sampling from a coalescent process.
+We decide to use Yule's coalescent instead of the more common Kingman.
+The latter tends to produce a large majority of internal nodes in close vicinity to the leaves with the others separated by very long branches, resulting in a trivial reconstruction for most nodes and a very hard one for the deep nodes. 
+Yule's coalescent generates a more even distribution of node depths, allowing us to better evaluate reconstruction quality, see SM and Figure~\sref{sfig:depth_distribution_coalescent}.
+For each tree, we simulate the evolution of sequences using a ``forward'' model to obtain two multiple sequence alignments, one for the leaves and one for the internal nodes of the tree.
+We then reconstruct internal nodes using the desired approach by using the leaf alignment and the tree topology as input data. 
+
+In the case of our autoregressive approach, we proceed as follows: 
+\begin{enumerate}[label=\emph{\roman*}]	
+	\item for sequence position $i=1$, use the evolution model defined by the equilibrium frequencies $p_1$ to reconstruct a state $a^n_1$ at each internal node $n$ of the tree;
+	\item iterating through subsequent positions $i > 1$: reconstruct state $a^n_i$ at each internal node $n$ using the model defined in \eqref{eq:autoregressive_site_propagator}, with the context $a^n_{<i}$ having been already reconstructed in a previous iteration. 
+\end{enumerate}
+It is important to note that when any position $i>1$ is reconstructed, the context at different internal nodes of the tree may differ. 
+For a branch joining two nodes $(n, m)$ of the tree, the evolution model will thus differ if we go down or up the branch: in one case the context at node $n$ must be used, in the other case the context at node $m$. 
+This is a consequence of the time-irreversibility of the model. 
+For this reason, we use a variant of Felsenstein's pruning algorithm that is adapted to irreversible models \cite{boussau_efficientlikelihoodcomputations_2006}. 
+This comes at no computational cost. 
+
+As a comparison, we also reconstruct ancestral sequences using IQ-TREE \cite{minh_iqtreenewmodels_2020}. 
+Both methods run on a fixed tree topology, with branch lengths being re-inferred using maximum likelihood (see Methods). 
+
 
 
 \subsection{Discussion}
@@ -119,8 +149,42 @@ However, a disadvantage is that the technique is only applicable to a given prot
 \subsection{Methods} % (fold)
 \label{sub:methods}
 
+\subsubsection{ArDCA}
+
+The ArDCA model assigns a probability to any sequence of amino acids of length $L$ given by 
+
+\begin{equation}
+	\label{eq:autoregressive_def_methods}
+	P^{AR}(\mathbf{a}) = \prod_{i \in \sigma(L)} p_i(a_i \vert a_{<i}),
+\end{equation}
+
+where $\sigma(L)$ is a permutation of the $L$ first integers and $a_{<i}$ stands for $a_1, \ldots, a_{i-1}$. 
+This means that the order in which the conditional probabilities $p_i$ are applied is not necessarily the sequence order. 
+The permutation $\sigma$ is fixed at model inference. 
+
+Conditional probabilities $p_i$ are defined as
+
+\begin{equation}
+	p_i(a_i \vert a_{<i}) = \frac{1}{Z_i}\exp\left( \sum_{j < i} J_{ij}(a_i, a_j) + h_i(a_i) \right),
+\end{equation}
+
+with the $i$ $q$-dimensional vectors $J_{i\cdot}$ and $h_i$ are learned parameters. 
+It was shown in \cite{trinquier_efficientgenerativemodeling_2021} that such a parametrization captures essential features of the variability of members of a proteins family. 
+
+\subsubsection{Simulations}
+
+A simulation is performed as follows. 
+First, a random tree of $n=100$ leaves is generated from Yule's coalescent. 
+We then normalize its height to a fixed value $H$ that depends on the forward model used: for the autoregressive model we use $H=2.0$, while for the Potts model combined with Metropolis steps, we use $H=8$ sweeps, \emph{i.e.} $H=8 L$ Metropolis steps where $L$ is the length of the sequences. 
+
+A root sequence is sampled from the forward model's equilibrium distribution, and evolution is simulated along each branch independently starting from the root. 
+In this way, we obtain for each repetition a tree and the alignments for internal and leaf nodes. 
+Results presented in this work are obtained by averaging over $M=100$ such simulations for each protein family. 
+
 \begin{itemize}
 	\item proper presentation of ardca (sequence ordering, functional form of cond probs)
-	\item how I run iqtree
+	\item details of simulations: number of leaves, size of trees, etc...
+	\item how I run iqtree + results of model finder
+	\item how branch lengths are reconstructed 
 \end{itemize}
 
