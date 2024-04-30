@@ -1,7 +1,7 @@
 using DrWatson
 @quickactivate "AutoRegressiveASR"
 
-include(scriptsdir("simulate_data_potts_yule.jl"))
+include(scriptsdir("generate_data_potts_yule.jl"))
 include(scriptsdir("asr_iqtree.jl"))
 include(scriptsdir("asr_ardca.jl"))
 include(scriptsdir("asr_ardca_diversity.jl"))

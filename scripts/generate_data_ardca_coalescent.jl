@@ -8,7 +8,7 @@ using DCATools
 using JSON3
 using TreeTools
 
-function simulate_data_ardca_yule(parsed_args::AbstractDict; force=false)
+function simulate_data_ardca_coalescent(parsed_args::AbstractDict; force=false)
     ## Parameters
     # Arnet model
     arnet_file = parsed_args["generative_model"]
@@ -19,7 +19,13 @@ function simulate_data_ardca_yule(parsed_args::AbstractDict; force=false)
     nleaves = parsed_args["nleaves"] # number of leaves
     treeheight = parsed_args["treeheight"]
      # KingmanCoalescent(n, N) or YuleCoalescent(n, b) -- tree height normalized after
-    coalescent = parsed_args["coalescent"](nleaves, 1)
+    coa_model, coalescent = if parsed_args["coalescent"] == "Kingman"
+        KingmanCoalescent(nleaves, 1), "Kingman"
+    elseif parsed_args["coalescent"] == "Yule"
+        YuleCoalescent(nleaves, 1), "Yule"
+    else
+        error("Unknown coalescent $(parsed_args["coalescesnt"])")
+    end
 
     outgroup = parsed_args["add_outgroup"]
     ntrees = parsed_args["ntrees"]
@@ -34,13 +40,13 @@ function simulate_data_ardca_yule(parsed_args::AbstractDict; force=false)
     sample_equilibrium = sample_arnet_file
     parameters = @dict(
         generative_model, sample_equilibrium,
-        nleaves, treeheight, ntrees, reps, b, outgroup, opt_bl,
+        coalescent, nleaves, treeheight, ntrees, reps, outgroup, opt_bl,
         timestamp,
     )
     @tag!(parameters)
     identifier = savename(
         parsed_args["prefix"], parameters;
-        accesses = [:nleaves, :treeheight, :ntrees, :opt_bl],
+        accesses = [:coalescent, :nleaves, :treeheight, :ntrees, :opt_bl],
         sort = true,
     )
     outfolder = joinpath(parsed_args["outfolder"], identifier)
@@ -87,7 +93,7 @@ function simulate_data_ardca_yule(parsed_args::AbstractDict; force=false)
     ## simulation
     dat_folder = joinpath(outfolder, "data")
     function get_tree()
-        tree = genealogy(YuleCoalescent(nleaves, b))
+        tree = genealogy(coa_model)
         if parsed_args["normalize_tree_height"]
             Temp = TreeTools.distance_to_deepest_leaf(tree.root)
             foreach(nodes(tree; skiproot = true)) do n

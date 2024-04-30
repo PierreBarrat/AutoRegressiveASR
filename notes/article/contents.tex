@@ -1,4 +1,126 @@
 % !TEX root = main.tex
 
-Models of evolution
+\subsection{Introduction}
+
+\subsection{Results} % (fold)
+\label{sub:results}
+
+\subsubsection{Autoregressive model of sequence evolution} 
+\label{sub:autoregressive_sequence_evolution_model}
+
+Models of evolution commonly used in phylogenetics rely on the assumptions that sequence positions evolve independently and that evolution at each position $i$ follows a continuous time Markov chain (CTMC) parametrized by a substitution rate matrix $\Qmat^i$. 
+Matrix $\Qmat^i$ is of dimensions $q \times q$ where $q=4$ for DNA, $20$ for amino acids or $64$ for codon models.
+The probability of observing a change from state $a$ to state $b$ during evolutionary time $t$ is then given by $P(b \vert a, t) = \left( e^{t\Qmat^i} \right)_{ab}$.
+
+If the model is time-reversible, it is a general property of CTMCs that the substitution rate matrix can be written as 
+
+\begin{equation}
+	\label{eq:Q_decomposition}
+	\Qmat = \mathbf{H}\cdot \mathbf{\Pi} = \mathbf{H} \cdot \begin{pmatrix}
+		\pi_1 & 0 & 0\\ 
+		0 & \ddots & 0 \\
+		0 & 0 & \pi_q
+	\end{pmatrix},
+\end{equation}
+
+where $\mathbf{H}$ is symmetric and $\mathbf{\Pi}$ is diagonal with entries that sum to 1 \cite{yang_computationalmolecularevolution_2006}. 
+The two matrices have simple interpretations. 
+On the first hand, $\mathbf{\Pi}$ fixes the long-term equilibrium frequencies, that is $P(b \vert a, t) \xrightarrow[t \rightarrow \infty]{} \pi_b$.
+On the other, $\mathbf{H}$ influences the dynamics of the Markov chain but does not change the equilibrium distribution. 
+Most commonly, $\mathbf{\Pi}$ is considered to be independent of the sequence position $i$, while $\mathbf{H}$ can be multiplied by position-dependent rates in order to model the different variability of different sites \cite{yang_maximumlikelihoodphylogenetic_1994,stamatakis_raxmlversiontool_2014,nguyen_iqtreefasteffective_2015}. \\
+
+
+In order to incorporate constraints coming from a protein's structure and function into the evolutionary model, we develop a family-specific model of protein sequence evolution based on the the autoregressive generative model ArDCA \cite{trinquier_efficientgenerativemodeling_2021}. 
+ArDCA models the diversity of sequences in a protein family using a set of learned conditional probabilities. 
+In practice, the model assigns a probability to any sequence $\mathbf{a} = \{a_1, \ldots, a_L\}$ of $L$ amino acids: 
+
+\begin{equation}
+	\label{eq:autoregressive_def}
+	P^{AR}(\mathbf{a}) = \prod_{i=1}^L p_i(a_i \vert a_{<i}),
+\end{equation}
+
+where the product runs over positions in the sequence and $a_{<i} = a_1, \ldots, a_{i-1}$ represents all amino acids before position $i$. 
+Functions $p_i$ represent the probability according to the model to observe state $a_i$ in position $i$, given that the previous amino acids were $a_1, \ldots, a_{i-1}$. 
+Their precise functional form is given in the methods section. 
+They are learned using the aligned sequences of members of the family. 
+In actual implementations, the order in which the product in \eqref{eq:autoregressive_def} is performed is not the natural $(1, \ldots, L)$ but rather an order where positions are sorted by increasing variability.
+This does not significantly effect the model we present below, and we keep the notation of \eqref{eq:autoregressive_def} for simplicity. 
+
+It has been shown in \cite{trinquier_efficientgenerativemodeling_2021} that the generative capacities of ArDCA are comparable to that of state of the art models such as bmDCA \cite{mcgee_generativecapacityprobabilistic_2021}. 
+This means that a set of sequences sampled from the probability in \eqref{eq:autoregressive_def} is statistically hard to distinguish from the natural sequences used in training or, in other words, that the model can be used to sample new artificial homologs of a protein family. 
+Generative capacities of a protein model come from its ability to represent epistasis, that is the relation between the effect of a mutation and sequence context in which it occurs. 
+Here, epistasis is modeled through the conditional probabilities $p_i$: the distribution of amino acids at position $i$ depends on the states of the previous positions $1, \ldots i-1$. 
+
+
+We take advantage of the autoregressive architecture to define the following evolution model. 
+Given two amino acid sequences $\mathbf{a}$ and $\mathbf{b}$, we propose
+
+\begin{equation}
+	\label{eq:autoregressive_propagator_full}
+	P(\mathbf{b} \vert \mathbf{a}, t) = \prod_{i=1}^L q_i(b_i \vert a_i, b_{<i}, t),
+\end{equation}
+
+where the conditional propagator $q_i$ is defined as 
+
+\begin{equation}
+	\label{eq:autoregressive_site_propagator}
+	q_i(b_i \vert a_i, b_{<i}, t) = \left(e^{t \cdot Q^i(b_{<i})}\right)_{a_i, b_i}, 
+	\quad Q^i(b_{<i}) = \mathbf{H} \cdot \begin{pmatrix}
+		p_i(1 \vert b_{<i}) & 0 & 0\\ 
+		0 & \ddots & 0 \\
+		0 & 0 & p_i(q \vert b_{<i})
+	\end{pmatrix}. 
+\end{equation}
+
+According to these equations, evolution for each position $i$ follows a standard CTMC. 
+However, we use the decomposition of \eqref{eq:Q_decomposition} to set the equilibrium frequency at $i$ to $p_i(b \vert b_{<i})$. 
+In other words, we consider that position $i$ evolves in the context of $b_1, \ldots, b_{i-1}$, and that its dynamics are constrained by its long term frequency given by the autoregressive model. 
+An important consequence of this choice is that our evolution model will converge at long times to the generative distribution $P^{AR}$: 
+
+\begin{equation}
+	\label{eq:autoregressive_long_term}
+	q_i(b_i \vert a_i, b_{<i}, t) \xrightarrow[t \rightarrow \infty]{} p_i(b_i \vert b_{<i}), 
+	\;\; P(\mathbf{b} \vert \mathbf{a}, t) \xrightarrow[t \rightarrow \infty]{} P^{AR}(\mathbf{b}).
+\end{equation}
+
+We argue here that such a property is essential to build a realistic protein sequence evolution model, particularly when considering evolution over a relatively long time frame. 
+Note that to converge to a generative distribution, accurate modeling of epistasis is required. 
+Using site-specific frequencies would not be sufficient, as the effect of mutations in a protein sequence typically depends on the context \cite{socolich_evolutionaryinformationspecifying_2005}. 
+The technique proposed here allows us to represent epistasis through the context dependent probabilities $p_i$, while still considering each sequence position one at a time. 
+
+Interestingly, we note that the model in \eqref{eq:autoregressive_propagator_full} is not time reversible, although context dependent site propagators in \eqref{eq:autoregressive_site_propagator} are reversible. 
+We show in the SM that this is mainly an artifact of the autoregressive nature of the model coupled with epistasis. 
+Using non-time reversible evolutionary models is uncommon in the field, but this is mainly due to practical considerations and there are no fundamental reasons for evolution itself to be reversible \cite{felsensteinjoseph_inferringphylogenies_2003}. 
+In practice, this means that algorithms using this model have to be adapted accordingly. \\
+
+
+We underline that this approach has important differences with standard models of evolution used in phylogenenetics. 
+In phylogenetic reconstruction, the tree and the sequence evolution model are usually inferred at the same time and from the same data. 
+The number of parameters of the evolution model is then kept low to reduce the risk of overfitting, for instance by using site specific rates to account for variable and conserved sites. 
+Methods that introduce more complex models such as site specific frequencies do so by jointly inferring the parameters and the tree, leading to relatively complex algorithms \cite{halpern_evolutionarydistancesproteincoding_1998a,puller_efficientinferencepotential_2020}.
+
+Here instead, parameters of the generative model in \eqref{eq:autoregressive_def} are learned from a protein family, \emph{i.e.} a set of diverged homologous protein sequences. 
+While it is true that these sequences share a common evolutionary history and cannot be considered as independent samples, common learning procedures only account for this in a very crude way \cite{cocco_inversestatisticalphysics_2018,trinquier_efficientgenerativemodeling_2021}.
+Despite this, it appears that the generative properties of such models are not strongly affected by ignoring the phylogeny \cite{hockenberry_phylogeneticweightingdoes_2019,rodriguezhorta_effectphylogeneticcorrelations_2021}. 
+This allows us to proceed in two steps: first construct the model from data while ignoring phylogeny, and then only use it for phylogenetic inference tasks.
+
+An advantage of this approach is that once the model of \eqref{eq:autoregressive_def} is inferred, the propagator in \eqref{eq:autoregressive_propagator_full} comes ``for free'' as no additional parameters are required. 
+Importantly, our model does not use site specific substitution rates. 
+Indeed, it has been shown that these can be seen as emergent properties when using more complex evolution models such as the one presented here \cite{delapaz_epistaticcontributionspromote_2020}.
+However, a disadvantage is that the technique is only applicable to a given protein family at a time, and requires the existence of an appropriate training set for the model. 
+
+
+\subsubsection{Ancestral sequence reconstruction}
+
+
+
+\subsection{Discussion}
+
+\subsection{Methods} % (fold)
+\label{sub:methods}
+
+\begin{itemize}
+	\item proper presentation of ardca (sequence ordering, functional form of cond probs)
+	\item how I run iqtree
+\end{itemize}
 

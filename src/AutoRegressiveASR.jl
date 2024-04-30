@@ -44,4 +44,10 @@ export ppv
 
 include("distance.jl")
 
+include("LBI.jl")
+export lbi!
+
+include("exp_distance_leaves.jl")
+export weighted_leaf_distance!
+
 end # module
