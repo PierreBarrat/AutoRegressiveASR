@@ -1,11 +1,11 @@
 % !TEX root = main.tex
 
-\subsection{Introduction}
+\section{Introduction}
 
-\subsection{Results} % (fold)
+\section{Results} % (fold)
 \label{sub:results}
 
-\subsubsection{Autoregressive model of sequence evolution} 
+\subsection{Autoregressive model of sequence evolution} 
 \label{sub:autoregressive_sequence_evolution_model}
 
 Models of evolution commonly used in phylogenetics rely on the assumptions that sequence positions evolve independently and that evolution at each position $i$ follows a continuous time Markov chain (CTMC) parametrized by a substitution rate matrix $\Qmat^i$. 
@@ -110,28 +110,17 @@ Indeed, it has been shown that these can be seen as emergent properties when usi
 However, a disadvantage is that the technique is only applicable to a given protein family at a time, and requires the existence of an appropriate training set for the model. 
 
 
-\subsubsection{Ancestral sequence reconstruction}
+\subsection{Ancestral sequence reconstruction}
 
-We illustrate the advantages of the proposed sequence evolution model by applying it to the task of ancestral sequence reconstruction (ASR). 
+We apply our evolutionary model to the task of ancestral sequence reconstruction (ASR). 
 The goal of ASR is the following: given a set of extant sequences with a shared evolutionary history and the corresponding phylogenetic tree, is it possible to reconstruct the sequences of extinct ancestors at the internal nodes of the tree? 
-One faces two difficulties when evaluating the capacity of a model to perform ASR. 
-The first is that in the case of biological data, the real phylogeny and ancestral sequences are not usually not known. 
-As a consequence, one must rely on simulated data. 
-The second is that for internal nodes that are sufficiently remote from the leaves, reconstruction of the exact ancestor is a hopeless task as the uncertainty then becomes high. 
-This means that it is only possible to make a statistical assessment about the quality of a reconstruction. 
+Along with the autoregressive evolutionary model described above, we thus need two inputs to perform ASR: a known phylogenetic tree, and the multiple sequence alignment of the leaf sequences. 
+The length of the aligned sequences has to exactly correspond to that of the autoregressive model. 
 
-To test our approach, we adopt the following setup. 
-We first generate phylogenetic trees by sampling from a coalescent process.
-We decide to use Yule's coalescent instead of the more common Kingman.
-The latter tends to produce a large majority of internal nodes in close vicinity to the leaves with the others separated by very long branches, resulting in a trivial reconstruction for most nodes and a very hard one for the deep nodes. 
-Yule's coalescent generates a more even distribution of node depths, allowing us to better evaluate reconstruction quality, see SM and Figure~\sref{sfig:depth_distribution_coalescent}.
-For each tree, we simulate the evolution of sequences using a ``forward'' model to obtain two multiple sequence alignments, one for the leaves and one for the internal nodes of the tree.
-We then reconstruct internal nodes using the desired approach by using the leaf alignment and the tree topology as input data. 
-
-In the case of our autoregressive approach, we proceed as follows: 
+To reconstruct ancestral sequences using the autoregressive model, we proceed as follows: 
 \begin{enumerate}[label=\emph{\roman*}]	
 	\item for sequence position $i=1$, use the evolution model defined by the equilibrium frequencies $p_1$ to reconstruct a state $a^n_1$ at each internal node $n$ of the tree;
-	\item iterating through subsequent positions $i > 1$: reconstruct state $a^n_i$ at each internal node $n$ using the model defined in \eqref{eq:autoregressive_site_propagator}, with the context $a^n_{<i}$ having been already reconstructed in a previous iteration. 
+	\item iterating through subsequent positions $i > 1$: reconstruct state $a^n_i$ at each internal node $n$ using the model defined in \eqref{eq:autoregressive_site_propagator}, with the context $a^n_{<i}$ having been already reconstructed in the previous iterations. 
 \end{enumerate}
 It is important to note that when any position $i>1$ is reconstructed, the context at different internal nodes of the tree may differ. 
 For a branch joining two nodes $(n, m)$ of the tree, the evolution model will thus differ if we go down or up the branch: in one case the context at node $n$ must be used, in the other case the context at node $m$. 
@@ -139,17 +128,103 @@ This is a consequence of the time-irreversibility of the model.
 For this reason, we use a variant of Felsenstein's pruning algorithm that is adapted to irreversible models \cite{boussau_efficientlikelihoodcomputations_2006}. 
 This comes at no computational cost. 
 
-As a comparison, we also reconstruct ancestral sequences using IQ-TREE \cite{minh_iqtreenewmodels_2020}. 
+Note that this method is adapted to both maximum likelihood and Bayesian inference. 
+In the ML case, each iteration reconstructs the most probable residue is at a position $i$ given the already reconstructed context. 
+In the Bayesian case, residue $a^n_i$ is instead sampled from the posterior distribution. 
+
+In any realistic application, the phylogenetic tree has to be reconstructed from the aligned sequences. 
+In principle, a consistent approach would use the same evolutionary model for tree inference and ASR. 
+However, our model does not allow us to reconstruct the tree.
+Therefore, in any realistic application, the tree is reconstructed using an evolutionary model that typically will differ from ours. 
+
+To reduce issues related to this evolutionary model discrepancy, we adopt the following strategy: our ASR method blindly trusts the topology of the input tree, but recomputes the branch length using the sequences. 
+As explained in the Methods, there is no direct way to optimize branch length with the autoregressive model. 
+For simplicity, we use profile model with position-specific amino acid frequencies for this task. 
+This provides a relatively accurate estimate of the branch lengths, as shown in Figure~\sref{sfig:branch_length_reconstruction}.
+
+
+\subsection{Results on simulated data}
+
+There are two difficulties when evaluating the capacity of a model to perform ASR. 
+The first is that in the case of biological data, the real phylogeny and ancestral sequences are usually not known. 
+As a consequence, one must rely on simulated data to measure the quality of reconstruction. 
+The second is that the reconstruction of an ancestral sequence is always uncertain, as evolutionary models are typically stochastic. 
+The uncertainty becomes higher as nodes that are more remote from the leaves are considered. 
+This means that it is only possible to make a statistical assessment about the quality of a reconstruction. 
+
+To test our approach, we adopt the following setup. 
+We first generate phylogenetic trees by sampling from a coalescent process.
+We decide to use Yule's coalescent instead of the more common Kingman.
+The latter tends to produce a large majority of internal nodes in close vicinity to the leaves with the others separated by very long branches, resulting in a trivial reconstruction for most nodes and a very hard one for the deep nodes. 
+Yule's coalescent generates a more even distribution of node depths, allowing us to better evaluate reconstruction quality, see \SI and Figure~\sref{sfig:depth_distribution_coalescent}.
+For each tree, we simulate the evolution of sequences using a model that we refer to as ``evolver'' to obtain two multiple sequence alignments, one for the leaves and one for the internal nodes of the tree.
+We then reconstruct internal nodes using the desired approach by using the leaf alignment and the tree topology as input data. 
+
+We will consider two kinds of evolver models: \emph{(i)} the same autoregressive model that we will then use for reconstruction, which is obviously an ideal case and \emph{(ii)} an evolutionary model based on a Metropolis sampling of a Potts model. 
+It is important to note that the approach that we propose only makes sense when considering the evolution of a precise protein family, on which the model in \eqref{eq:autoregressive_def} is trained. 
+Hence, any evolver model used in our simulations should reproduce at long times the statistics of the considered protein family, \emph{i.e.} it should satisfy \eqref{eq:autoregressive_long_term}. 
+For this reason, we only consider the two evolvers above and do not use more traditional evolutionary models such as an arbitrary GTR on amino-acids \cite{rambaut_seqgenapplicationmonte_1997}. 
+
+For reconstruction, we compare our autoregressive approach to the commonly used IQ-TREE program  \cite{minh_iqtreenewmodels_2020}.
+When supplied with a protein sequence alignment and a tree, IQ-TREE infers a joint substitution rate matrix for all sequence positions, with rate that can differ accross positions. 
 Both methods run on a fixed tree topology, with branch lengths being re-inferred using maximum likelihood (see Methods). 
 
+\begin{figure}
+	\centering
+	\includegraphics[width = \textwidth]{figures/hamming_to_real_arnet_PF00072.png}
+	\caption{
+		Hamming distance between reconstructed and real sequences as a function of node depth, using IQ-TREE and our autoregressive approach. 
+		The difference between the two methods is shown as a black curve. 
+		The evolver and reconstruction autoregressive models are learned on the PF00072 family. 
+		\textbf{Left}: Hamming distance between the full aligned sequences, gaps included, using maximum likelihood reconstruction.  	
+		\textbf{Center}: Hamming distance ignoring gapped positions, using maximum likelihood reconstruction. 
+		\textbf{Right}: comparison of Bayesian (solid lines) and maximum likelihood (dashed lines) reconstructions, ignoring gaps. 
+	}
+	\label{fig:hamming_real_arnet}
+\end{figure}
+
+We investigate the case of the autoregressive evolver. 
+This setting is of course ideal for our method, as there is perfect coincidence between the model used to generate the data and to perform ASR. 
+We first evaluate the quality of reconstruction by computing the Hamming distance of the real and inferred sequences for each internal node of the simulated phylogenies. 
+\figref{fig:fig:hamming_real_arnet} shows the Hamming distance as a function of the node depth, that is the distance separating the node from the leaves. 
 
 
-\subsection{Discussion}
 
-\subsection{Methods} % (fold)
+\begin{figure}
+	\centering
+	\includegraphics[width = \textwidth]{figures/diversity_likelihood_arnet_PF00072.png}
+	\caption{
+		\textbf{Left}: for Bayesian reconstruction, average pairwise Hamming distance among sequences reconstructed for each internal node. This quantifies the diversity of sequences obtained using Bayesian reconstruction. 
+		\textbf{Center}: Hamming distance between reconstructed sequences and the consensus sequence of the alignment. Solid lines represent maximum likelihood reconstruction or the real internal sequences, and dashed lines Bayesian reconstruction. IQ-TREE appears more biased towards the consensus sequence. 
+		\textbf{Right}: Likelihood of reconstructed and real sequences in the autoregressive model, \emph{i.e.} using \eqref{eq:autoregressive_def}. Maximum likelihood methods (orange and blue solid lines) are biased towards more probable sequences. 
+		Bayesian autoregressive reconstruction gives sequences that are at the same likelihood level than the real ancestors. 
+	}
+	\label{fig:diversity_likelihood_arnet}
+\end{figure}
+
+
+\begin{figure}
+	\centering
+	\includegraphics[width = \textwidth]{figures/hamming_to_real_potts_PF00072.png}
+	\caption{
+		Analogous to Figure~\ref{fig:hamming_real_arnet}, but using a Potts model as the evolver. 
+		Hamming distance between reconstructed and real sequences as a function of node depth, using IQ-TREE and our autoregressive approach. 
+		The difference between the two methods is shown as a black curve. 
+		The evolver and reconstruction autoregressive models are learned on the PF00072 family. 
+		\textbf{Left}: Hamming distance between the full aligned sequences, gaps included, using maximum likelihood reconstruction.  	
+		\textbf{Center}: Hamming distance ignoring gapped positions, using maximum likelihood reconstruction. 
+		\textbf{Right}: comparison of Bayesian (solid lines) and maximum likelihood (dashed lines) reconstructions, ignoring gaps. 
+	}
+	\label{fig:hamming_real_potts}
+\end{figure}
+
+
+\section{Discussion}
+
+\section{Methods} % (fold)
 \label{sub:methods}
 
-\subsubsection{ArDCA}
+\subsection{ArDCA}
 
 The ArDCA model assigns a probability to any sequence of amino acids of length $L$ given by 
 
@@ -165,13 +240,22 @@ The permutation $\sigma$ is fixed at model inference.
 Conditional probabilities $p_i$ are defined as
 
 \begin{equation}
-	p_i(a_i \vert a_{<i}) = \frac{1}{Z_i}\exp\left( \sum_{j < i} J_{ij}(a_i, a_j) + h_i(a_i) \right),
+	p_i(b \vert a_{<i}) = \frac{1}{Z_i}\exp\left( \sum_{j < i} J_{ij}(b, a_j) + h_i(b) \right),
 \end{equation}
 
 with the $i$ $q$-dimensional vectors $J_{i\cdot}$ and $h_i$ are learned parameters. 
 It was shown in \cite{trinquier_efficientgenerativemodeling_2021} that such a parametrization captures essential features of the variability of members of a proteins family. 
 
-\subsubsection{Simulations}
+\subsection{Branch length inference}
+
+\begin{itemize}
+	\item how it works generally
+	\item why I can't use AR directly
+	\item how we do it with the profile model
+	\item refer to the SI figure for results
+\end{itemize}
+
+\subsection{Simulations}
 
 A simulation is performed as follows. 
 First, a random tree of $n=100$ leaves is generated from Yule's coalescent. 
@@ -180,6 +264,7 @@ We then normalize its height to a fixed value $H$ that depends on the forward mo
 A root sequence is sampled from the forward model's equilibrium distribution, and evolution is simulated along each branch independently starting from the root. 
 In this way, we obtain for each repetition a tree and the alignments for internal and leaf nodes. 
 Results presented in this work are obtained by averaging over $M=100$ such simulations for each protein family. 
+
 
 \begin{itemize}
 	\item proper presentation of ardca (sequence ordering, functional form of cond probs)
