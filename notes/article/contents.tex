@@ -161,20 +161,22 @@ For each tree, we simulate the evolution of sequences using a model that we refe
 We then reconstruct internal nodes using the desired approach by using the leaf alignment and the tree topology as input data. 
 
 We will consider two kinds of evolver models: \emph{(i)} the same autoregressive model that we will then use for reconstruction, which is obviously an ideal case and \emph{(ii)} an evolutionary model based on a Metropolis sampling of a Potts model. 
+These two evolvers come from models trained on actual protein families: we use evolvers based on the PF00072 response regulator family for results of the main text, and show results for three other families (PF00014, PF00076 and PF00595) in the \SI.  
 It is important to note that the approach that we propose only makes sense when considering the evolution of a precise protein family, on which the model in \eqref{eq:autoregressive_def} is trained. 
 Hence, any evolver model used in our simulations should reproduce at long times the statistics of the considered protein family, \emph{i.e.} it should satisfy \eqref{eq:autoregressive_long_term}. 
 For this reason, we only consider the two evolvers above and do not use more traditional evolutionary models such as an arbitrary GTR on amino-acids \cite{rambaut_seqgenapplicationmonte_1997}. 
 
 For reconstruction, we compare our autoregressive approach to the commonly used IQ-TREE program  \cite{minh_iqtreenewmodels_2020}.
 When supplied with a protein sequence alignment and a tree, IQ-TREE infers a joint substitution rate matrix for all sequence positions, with rate that can differ accross positions. 
-Both methods run on a fixed tree topology, with branch lengths being re-inferred using maximum likelihood (see Methods). 
+Both methods run on a fixed tree topology, with branch lengths being re-inferred using maximum likelihood (see Methods). \\
 
 \begin{figure}
 	\centering
 	\includegraphics[width = \textwidth]{figures/hamming_to_real_arnet_PF00072.png}
 	\caption{
 		Hamming distance between reconstructed and real sequences as a function of node depth, using IQ-TREE and our autoregressive approach. 
-		The difference between the two methods is shown as a black curve. 
+		The difference between the two methods (``improvement'') is shown as a black curve. 
+		Estimation of the incertitude is shown as a ribbon. 
 		The evolver and reconstruction autoregressive models are learned on the PF00072 family. 
 		\textbf{Left}: Hamming distance between the full aligned sequences, gaps included, using maximum likelihood reconstruction.  	
 		\textbf{Center}: Hamming distance ignoring gapped positions, using maximum likelihood reconstruction. 
@@ -183,11 +185,24 @@ Both methods run on a fixed tree topology, with branch lengths being re-inferred
 	\label{fig:hamming_real_arnet}
 \end{figure}
 
-We investigate the case of the autoregressive evolver. 
+We first investigate the case of the autoregressive evolver. 
 This setting is of course ideal for our method, as there is perfect coincidence between the model used to generate the data and to perform ASR. 
 We first evaluate the quality of reconstruction by computing the Hamming distance of the real and inferred sequences for each internal node of the simulated phylogenies. 
-\figref{fig:fig:hamming_real_arnet} shows the Hamming distance as a function of the node depth, that is the distance separating the node from the leaves. 
+The left and central panels of \figref{fig:hamming_real_arnet} show this Hamming distance as a function of the node depth, that is the distance separating the node from the leaves, and for a maximum likelihood reconstruction. 
+On the left panel distance is computed including gap characters in the aligned sequences, while they are ignored on the central one. 
+We see that the autoregressive reconstruction clearly outperforms the state of the art method, with the improvement in Hamming distance increasing with node depths and reaching $0.1$. 
 
+Interestingly, the performance of IQ-TREE degrades if Hamming distance is computed including gaps, as in the left panel. 
+This is because like other popular methods, IQ-TREE treats gaps in input sequences as unknown amino acids, and reconstructs an ancestral amino acid for gapped positions \cite{yang_pamlphylogeneticanalysis_2007,minh_iqtreenewmodels_2020}. 
+On the contrary, our autoregressive approach treats gaps as if they were an additional amino acid and will reconstruct ancestral sequences that can contain gaps. 
+This benefits the autoregressive approach as aligned ancetral sequences can in fact contain gaps.
+This effect is particularly visible at low node depths. 
+However, ignoring the effects of gaps in the Hamming distance also leads to a clear improvement when using the autoregressive approach as shown in the central panel. 
+
+The right panel of \figref{fig:hamming_real_arnet} shows the quality of the reconstruction for Bayesian reconstruction. 
+In this case, a ensemble of sequences is reconstructed for each internal node, and the metric is the average Hamming distance between this ensemble and the real ancestor. 
+Gaps are again ignored when computing the Hamming distance. 
+We again observe an improvement when using the autoregressive method, of slightly lesser magnitude than in the maximum likelihood case. \\
 
 
 \begin{figure}
@@ -197,10 +212,14 @@ We first evaluate the quality of reconstruction by computing the Hamming distanc
 		\textbf{Left}: for Bayesian reconstruction, average pairwise Hamming distance among sequences reconstructed for each internal node. This quantifies the diversity of sequences obtained using Bayesian reconstruction. 
 		\textbf{Center}: Hamming distance between reconstructed sequences and the consensus sequence of the alignment. Solid lines represent maximum likelihood reconstruction or the real internal sequences, and dashed lines Bayesian reconstruction. IQ-TREE appears more biased towards the consensus sequence. 
 		\textbf{Right}: Likelihood of reconstructed and real sequences in the autoregressive model, \emph{i.e.} using \eqref{eq:autoregressive_def}. Maximum likelihood methods (orange and blue solid lines) are biased towards more probable sequences. 
-		Bayesian autoregressive reconstruction gives sequences that are at the same likelihood level than the real ancestors. 
+		Bayesian autoregressive reconstruction gives sequences that are at the same likelihood level than the real ancestors. The equilibrium distribution of likelihood of sequences generated by \eqref{eq:autoregressive_def} is shown on the right. 
 	}
 	\label{fig:diversity_likelihood_arnet}
 \end{figure}
+
+To further analyze the reconstructed sequences, we first look at the diversity of generated ancestors in Bayesian reconstruction. 
+The left panel of \figref{fig:diversity_likelihood_arnet} shows the average Hamming distance between sequences reconstructed at the same internal node, as a function of depth. 
+For deeper node (depth $>1$), the Bayesian autoregressive approach reconstructs a significantly more diverse set of sequences than IQ-TREE: Hamming distance between reconstruction saturates at $0.2$ for the latter, while it steadily increases for the former. 
 
 
 \begin{figure}
