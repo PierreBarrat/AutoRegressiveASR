@@ -145,29 +145,29 @@ This provides a relatively accurate estimate of the branch lengths, as shown in 
 
 \subsection{Results on simulated data}
 
-There are two difficulties when evaluating the capacity of a model to perform ASR. 
+\paragraph*{Setup.} There are two difficulties when evaluating the capacity of a model to perform ASR. 
 The first is that in the case of biological data, the real phylogeny and ancestral sequences are usually not known. 
 As a consequence, one must rely on simulated data to measure the quality of reconstruction. 
 The second is that the reconstruction of an ancestral sequence is always uncertain, as evolutionary models are typically stochastic. 
-The uncertainty becomes higher as nodes that are more remote from the leaves are considered. 
+The uncertainty becomes higher for nodes that are remote from the leaves.
 This means that it is only possible to make a statistical assessment about the quality of a reconstruction. 
 
 To test our approach, we adopt the following setup. 
 We first generate phylogenetic trees by sampling from a coalescent process.
 We decide to use Yule's coalescent instead of the more common Kingman.
 The latter tends to produce a large majority of internal nodes in close vicinity to the leaves with the others separated by very long branches, resulting in a trivial reconstruction for most nodes and a very hard one for the deep nodes. 
-Yule's coalescent generates a more even distribution of node depths, allowing us to better evaluate reconstruction quality, see \SI and Figure~\sref{sfig:depth_distribution_coalescent}.
+Yule's coalescent generates a more even distribution of node depths, allowing us to better evaluate reconstruction quality, see \SI  and Figure~\sref{sfig:depth_distribution_coalescent}.
 For each tree, we simulate the evolution of sequences using a model that we refer to as ``evolver'' to obtain two multiple sequence alignments, one for the leaves and one for the internal nodes of the tree.
 We then reconstruct internal nodes using the desired approach by using the leaf alignment and the tree topology as input data. 
 
-We will consider two kinds of evolver models: \emph{(i)} the same autoregressive model that we will then use for reconstruction, which is obviously an ideal case and \emph{(ii)} an evolutionary model based on a Metropolis sampling of a Potts model. 
+We will consider two kinds of evolver models: \emph{(i)} the same autoregressive model that we will then use for reconstruction, which is an ideal case and \emph{(ii)} an evolutionary model based on a Metropolis sampling of a Potts model. 
 These two evolvers come from models trained on actual protein families: we use evolvers based on the PF00072 response regulator family for results of the main text, and show results for three other families (PF00014, PF00076 and PF00595) in the \SI.  
 It is important to note that the approach that we propose only makes sense when considering the evolution of a precise protein family, on which the model in \eqref{eq:autoregressive_def} is trained. 
 Hence, any evolver model used in our simulations should reproduce at long times the statistics of the considered protein family, \emph{i.e.} it should satisfy \eqref{eq:autoregressive_long_term}. 
 For this reason, we only consider the two evolvers above and do not use more traditional evolutionary models such as an arbitrary GTR on amino-acids \cite{rambaut_seqgenapplicationmonte_1997}. 
 
 For reconstruction, we compare our autoregressive approach to the commonly used IQ-TREE program  \cite{minh_iqtreenewmodels_2020}.
-When supplied with a protein sequence alignment and a tree, IQ-TREE infers a joint substitution rate matrix for all sequence positions, with rate that can differ accross positions. 
+When supplied with a protein sequence alignment and a tree, IQ-TREE infers a joint substitution rate matrix for all sequence positions, with rates that can differ accross positions. 
 Both methods run on a fixed tree topology, with branch lengths being re-inferred using maximum likelihood (see Methods). \\
 
 \begin{figure}
@@ -185,12 +185,12 @@ Both methods run on a fixed tree topology, with branch lengths being re-inferred
 	\label{fig:hamming_real_arnet}
 \end{figure}
 
-We first investigate the case of the autoregressive evolver. 
+\paragraph*{Autoregressive evolver.} We first investigate the case of the autoregressive evolver. 
 This setting is of course ideal for our method, as there is perfect coincidence between the model used to generate the data and to perform ASR. 
 We first evaluate the quality of reconstruction by computing the Hamming distance of the real and inferred sequences for each internal node of the simulated phylogenies. 
 The left and central panels of \figref{fig:hamming_real_arnet} show this Hamming distance as a function of the node depth, that is the distance separating the node from the leaves, and for a maximum likelihood reconstruction. 
-On the left panel distance is computed including gap characters in the aligned sequences, while they are ignored on the central one. 
-We see that the autoregressive reconstruction clearly outperforms the state of the art method, with the improvement in Hamming distance increasing with node depths and reaching $0.1$. 
+Hamming distance is computed including gap characters in the aligned sequences on the right panel, while they are ignored on the central one. 
+We see that the autoregressive reconstruction clearly outperforms the state of the art method: the improvement in Hamming distance increases with node depths, and the distance to the real ancestor drops from $\sim 0.4$ to $\sim 0.3$ when using the autoregressive approach. 
 
 Interestingly, the performance of IQ-TREE degrades if Hamming distance is computed including gaps, as in the left panel. 
 This is because like other popular methods, IQ-TREE treats gaps in input sequences as unknown amino acids, and reconstructs an ancestral amino acid for gapped positions \cite{yang_pamlphylogeneticanalysis_2007,minh_iqtreenewmodels_2020}. 
@@ -211,15 +211,43 @@ We again observe an improvement when using the autoregressive method, of slightl
 	\caption{
 		\textbf{Left}: for Bayesian reconstruction, average pairwise Hamming distance among sequences reconstructed for each internal node. This quantifies the diversity of sequences obtained using Bayesian reconstruction. 
 		\textbf{Center}: Hamming distance between reconstructed sequences and the consensus sequence of the alignment. Solid lines represent maximum likelihood reconstruction or the real internal sequences, and dashed lines Bayesian reconstruction. IQ-TREE appears more biased towards the consensus sequence. 
-		\textbf{Right}: Likelihood of reconstructed and real sequences in the autoregressive model, \emph{i.e.} using \eqref{eq:autoregressive_def}. Maximum likelihood methods (orange and blue solid lines) are biased towards more probable sequences. 
+		\textbf{Right}: Log-likelihood of reconstructed and real sequences in the autoregressive model, \emph{i.e.} using the logarithm of \eqref{eq:autoregressive_def}. 
+		Maximum likelihood methods (orange and blue solid lines) are biased towards more probable sequences. 
 		Bayesian autoregressive reconstruction gives sequences that are at the same likelihood level than the real ancestors. The equilibrium distribution of likelihood of sequences generated by \eqref{eq:autoregressive_def} is shown on the right. 
 	}
 	\label{fig:diversity_likelihood_arnet}
 \end{figure}
 
-To further analyze the reconstructed sequences, we first look at the diversity of generated ancestors in Bayesian reconstruction. 
+\paragraph*{Reconstructed sequences.} To further analyze the reconstructed sequences, we first look at the diversity of generated ancestors in Bayesian reconstruction. 
 The left panel of \figref{fig:diversity_likelihood_arnet} shows the average Hamming distance between sequences reconstructed at the same internal node, as a function of depth. 
-For deeper node (depth $>1$), the Bayesian autoregressive approach reconstructs a significantly more diverse set of sequences than IQ-TREE: Hamming distance between reconstruction saturates at $0.2$ for the latter, while it steadily increases for the former. 
+For deeper nodes (depth $\gtrsim 1$), the Bayesian autoregressive approach reconstructs a significantly more diverse set of sequences than IQ-TREE: Hamming distance between reconstructions saturates at $0.2$ for the latter, while it steadily increases for the former. 
+Higher diversity can be interpreted as a greater uncertainty concerning the ancestral sequence. 
+However, this must be put in the context of \figref{fig:hamming_real_arnet}: sequences obtained by Bayesian autoregressive reconstruction are more varied but also on average closer to the real ancestor. 
+
+The difference in sequence diversity for the two methods is in part explained by the central panel of \figref{fig:diversity_likelihood_arnet}, which shows the Hamming distance between reconstructed ancestors and the consensus sequence of the multiple sequence alignment at the leaves. 
+It appears there that for deep nodes, IQ-TREE reconstructs sequences that are relatively similar to the consensus, with an average distance between the Bayesian reconstruction and the consensus of about $0.3$. 
+Contrasting with that, results of the autoregressive method shows less bias towards the consensus with an average distance of $0.4$ for deep nodes, in line with the real ancestors. 
+We also note that maximum likelihood sequences for both method are always closer to the consensus than Bayesian ones, which is a known bias of maximum likelihood \cite{williams_assessingaccuracyancestral_2006}. 
+
+The bias induced by ignoring the equilibrium distribution of the sequences is also visible in the right panel of \figref{fig:diversity_likelihood_arnet}: it shows the log-likelihood of reconstructed and real ancestral sequences according to the generative model. 
+Note that the log-likelihood here comes from the log-probability of \eqref{eq:autoregressive_def} and can be interpreted as the ``quality'' of a sequence according to the generative model. 
+It is unrelated to the likelihood computed in Felsenstein's pruning algorithm. 
+Reconstructions with IQ-TREE increase in likelihood when going deeper in the tree, eventually resulting in sequences that are very uncharacteristic of the equilibrium generative distribution as can be seen from the histogram on the right. 
+This effect also happens with the maximum likelihood reconstruction of the autoregressive model, although to a lesser extent. 
+The Bayesian autoregressive reconstruction does not suffer from this bias and reconstructs sequences with a log-likelihood that is similar to that of the real ancestors. \\
+
+\paragraph*{Potts evolver.} We then assess the performance of our reconstruction method in the case where the evolver is a Potts model. 
+Potts models are a simple type of generative model and have been used extensively to model protein sequences. 
+They can be use to predict contact in three dimensional structures, effects of mutations, protein-protein interaction partners \cite{cocco_inversestatisticalphysics_2018}. 
+They can be sampled to generate novel sequences which are statistically similar to natural ones and often functional \cite{russ_evolutionbasedmodeldesigning_2020,mcgee_generativecapacityprobabilistic_2021}.
+Additionally, it has recently been shown that they can be used to describe the evolution of protein sequences both qualitatively and quantitatively \cite{bisardi_modelingsequencespaceexploration_2021}.
+
+Potts and autoregressive models both accurately reproduce the statistical properties of protein families. 
+In this sense, it can be considered that they correspond to similar long term generative distributions in the sense of \eqref{eq:autoregressive_long_term}. 
+However, the dynamics of a Potts model are fundamentally different from the ones of usual evolutionary models, including our autoregressive one. 
+First, they are described by a \emph{discrete} time Markov chain, instead of the continuous time used in models based on substitution rate matrices such as in \eqref{eq:Q_decomposition} \cite{alvarez_vivofunctionalphenotypes_2024}. 
+The discrete time in these dynamics corresponds to attempts at mutation, which can be either accepted or rejected depending on the effect of the mutation according to the model. 
+Secondly, these dynamics naturally give rise to different evolutionary timescales for various sequence positions, as well as interesting qualitative behavior such as the entrenchment of mutations. 
 
 
 \begin{figure}
@@ -237,6 +265,44 @@ For deeper node (depth $>1$), the Bayesian autoregressive approach reconstructs 
 	\label{fig:hamming_real_potts}
 \end{figure}
 
+To see how this change in dynamics affects our results, we \emph{(i)} sample a large and varied ensemble of sequences from the Potts model and use it to train an autoregressive model, in a way to guarantee consistent long term distributions between the Potts and autoregressive, and \emph{(ii)} evolve the Potts model along random phylogenies, generating alignments for the leaves and the internal nodes in the same way as above. 
+We then attempt reconstruction of internal nodes using the inferred autoregressive model and IQ-TREE.
+\figref{fig:hamming_real_potts} shows the results of reconstruction, with panels directly comparable to \figref{fig:hamming_real_arnet}. 
+We again see a consistent improvement when using the autoregressive model over IQ-TREE, although of a much smaller amplitude, with an absolute improvement gain in Hamming distance of about 2\% for deep internal nodes.
+
+
+\subsection{Results on experimental evolution data.}
+
+We take advantage of recent developments in directed evolution experiments to test our method in a controlled setting. 
+We use the data published in \cite{stiffler_proteinstructureexperimental_2020}: in this work, authors evolved the antibiotic resistant proteins $\beta$-lactamase PSE-1 and acetyltransferase AAC6 by submitting them to  cycles of mutagenesis and functional selection. 
+Starting from a wild-type protein, they obtained thousands of diverse functional sequences after the directed evolution. 
+An interesting result of this work is that it is possible to recover structural information about the wild-type from the set of evolved sequences. 
+
+Here, we use this data as a test setting for ASR: the sequences obtained after directed evolution all derive from a common ancestor, the wild-type, for which we know the amino acid sequence. 
+We can thus reconstruct the wild-type sequence using different ASR methods and compare it to the ground truth. 
+
+Here, we recognize that this experiment 
+- set of relatively diverse sequences with a joint evo history (phylogeny)
+- known sequence for the MRCA. 
+
+
+
+
+\begin{figure}
+	\centering
+	\includegraphics[width = \textwidth]{figures/stiffler_reconstruction.png}
+	\caption{
+		Reconstruction of the wild-type PSE1 sequence used in \cite{stiffler_proteinstructureexperimental_2020} using sequences from round $20$ of the directed evolution. 
+		The \emph{consensus} method simply estimates the root of the tree using the consensus of the aligned leaf sequences. 
+		\textbf{Left.} Non normalized Hamming distance to the wild-type PSE1 sequence as a function of the number of sequences $M$ used for reconstruction. The fact that the consensus method has a local minimum is discussed in the \SI.
+		\textbf{Middle.} For the six sequence positions where most of the reconstruction errors are located, fraction of errors of each method out of $100$ independent reconstructions using different sets of $M = 640$ leaves. 
+		\textbf{Right.} Sequence logo of the reconstructed sequence for the three methods, obtained using $100$ independent reconstructions with different sets of $M = 640$ leaves. The logo is only shown for the six positions where most errors are located. 
+		For example, all three methods fail $100$ times at position $147$, reconstructing a leucine $L$ instead of a phenylalanine $F$.
+	}
+	\label{fig:stiffler}
+\end{figure}
+
+In order 
 
 \section{Discussion}
 
@@ -278,17 +344,28 @@ It was shown in \cite{trinquier_efficientgenerativemodeling_2021} that such a pa
 
 A simulation is performed as follows. 
 First, a random tree of $n=100$ leaves is generated from Yule's coalescent. 
-We then normalize its height to a fixed value $H$ that depends on the forward model used: for the autoregressive model we use $H=2.0$, while for the Potts model combined with Metropolis steps, we use $H=8$ sweeps, \emph{i.e.} $H=8 L$ Metropolis steps where $L$ is the length of the sequences. 
+We then normalize its height to a fixed value $H$ that depends on the evolver model used: for the autoregressive model we use $H=2.0$, while for the Potts model combined with Metropolis steps, we use $H=8$ sweeps, \emph{i.e.} $H=8 L$ Metropolis steps where $L$ is the length of the sequences. 
 
-A root sequence is sampled from the forward model's equilibrium distribution, and evolution is simulated along each branch independently starting from the root. 
+A root sequence is sampled from the evolver model's equilibrium distribution, and evolution is simulated along each branch independently starting from the root. 
+In the case of the autoregressive evolve, the dynamics is the one of \eqref{eq:autoregressive_propagator_full}. 
+In the case of the Potts model, we use a Markov chain with the Metropolis update rule. 
 In this way, we obtain for each repetition a tree and the alignments for internal and leaf nodes. 
 Results presented in this work are obtained by averaging over $M=100$ such simulations for each protein family. 
 
+\subsection{Experimental evolution data}
+
+We use the data coming from the experimental evolution of the PSE-1 protein, published in \cite{stiffler_proteinstructureexperimental_2020}. 
 
 \begin{itemize}
-	\item proper presentation of ardca (sequence ordering, functional form of cond probs)
-	\item details of simulations: number of leaves, size of trees, etc...
+	\item A word on the wild-type and what it does
+	\item A brief summary of the experiment. What diversity is obtained after 20 rounds? What is the population size?
+	\item what the corresponding pfam is, where we got the sequences (ref.)
+	\item the alignment methodology
+\end{itemize}
+
+\subsection{iqtree}
+
+\begin{itemize}
 	\item how I run iqtree + results of model finder
-	\item how branch lengths are reconstructed 
 \end{itemize}
 
