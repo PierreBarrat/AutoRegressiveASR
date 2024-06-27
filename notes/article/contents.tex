@@ -2,6 +2,41 @@
 
 \section{Introduction}
 
+Homologous proteins have a common evolutionary origin that can span billions of years. 
+Throughout their evolution, they diversify through mutations while selection preserves their function. 
+Consequently, many protein families consist of thousands of sequences that are highly variable and yet maintain similar structures and functions. 
+On the other hand, even a few mutations can destabilize a protein and destroy its function. 
+A quantitative description of sequence changes in proteins is thus a challenging problem, with important consequences for our understanding of the evolution of life. 
+
+Many probabilistic models of protein sequence evolution have been developed. 
+Commonly used ones describe the evolution at each sequence position as a Markov chain across amino acid states, taking into account average properties of the substitution process such as more frequent transitions between similar amino acids \cite{dayhoff_modelevolutionarychange_1978,henikoff_aminoacidsubstitution_1992,jones_rapidgenerationmutation_1992}. 
+Variations in evolutionary speed at different sites are often represented by using a set of substitution rates to which sites can be assigned, usually coming from a Gamma distribution \cite{yang_maximumlikelihoodphylogenetic_1994}.
+An important and widely accepted assumption is that sequence positions evolve independently. 
+This has the advantage of greatly simplifying the analytical and numerical application, making them computationally manageable. 
+However, it comes at the cost of ignoring epistasis, that is the fact that the effect of a mutation depends on the rest of the sequence. 
+
+Uses: inferring phylogeny, and ASR. Description of ASR
+
+On the other hand: generative models from ensembles of homologous sequences. 
+
+Typical models: ignore epistasis and functional constraints. Alignments from any family are treated in almost the same way. 
+Generative models: hard to do dynamics with. Proposed propagators: not analytical, can only be used for forward simulations. 
+
+In this study, we extend the application of generative models to describe evolutionary dynamics. 
+First, we develop an analytically and numerically tractable sequence evolution model with generative properties, based on the so-called autoregressive architecture of protein generative models \cite{trinquier_efficientgenerativemodeling_2021}. 
+This model accounts for epistasis and is generative over long-term evolution. 
+We then apply our model to ancestral sequence reconstruction (ASR) and demonstrate, using simulated data, that it outperforms the state-of-the-art program IQ-TREE. 
+Finally, we validate our approach with recent experimental data on directed evolution, which to our knowledge is the first use of such data to evaluate reconstruction methods.
+
+\begin{itemize}
+	\item Proteins are important. Evolved for billions of years. Mutation + selection --> varied sequences with relatively conserved function/structure. Challenge to describe this evolution
+	\item How typical evolution models work, since JC69 and on. Applications to phylogenetic and ASR --> very important bioinformatic tools. However, do not take epistasis into account. 
+	\item On the other hand, generative models. List all cool things
+	\item Challenge to extend generative models to dynamics and to apply them to dynamical problems such as ASR. This is especially important for ASR, since conclusions depend on the quality of the reconstructed sequence 
+	\item Here, we proceed in two parts. First we develop an analytically tractable dynamical generative model based on ArDCA
+	\item Second, we test its capacity to perform ASR on simulated and directed evolution data
+\end{itemize}
+
 \section{Results} % (fold)
 \label{sub:results}
 
@@ -145,7 +180,7 @@ This provides a relatively accurate estimate of the branch lengths, as shown in 
 
 \subsection{Results on simulated data}
 
-\paragraph*{Setup.} There are two difficulties when evaluating the capacity of a model to perform ASR. 
+There are two difficulties when evaluating the capacity of a model to perform ASR. 
 The first is that in the case of biological data, the real phylogeny and ancestral sequences are usually not known. 
 As a consequence, one must rely on simulated data to measure the quality of reconstruction. 
 The second is that the reconstruction of an ancestral sequence is always uncertain, as evolutionary models are typically stochastic. 
@@ -191,6 +226,7 @@ We first evaluate the quality of reconstruction by computing the Hamming distanc
 The left and central panels of \figref{fig:hamming_real_arnet} show this Hamming distance as a function of the node depth, that is the distance separating the node from the leaves, and for a maximum likelihood reconstruction. 
 Hamming distance is computed including gap characters in the aligned sequences on the right panel, while they are ignored on the central one. 
 We see that the autoregressive reconstruction clearly outperforms the state of the art method: the improvement in Hamming distance increases with node depths, and the distance to the real ancestor drops from $\sim 0.4$ to $\sim 0.3$ when using the autoregressive approach. 
+The increase in reconstruction quality with node depths is consistent with recent findings that epistasis only becomes important at relatively large sequence divergences \cite{park_epistaticdriftcauses_2022,bari_emergenttimescales_2024}.
 
 Interestingly, the performance of IQ-TREE degrades if Hamming distance is computed including gaps, as in the left panel. 
 This is because like other popular methods, IQ-TREE treats gaps in input sequences as unknown amino acids, and reconstructs an ancestral amino acid for gapped positions \cite{yang_pamlphylogeneticanalysis_2007,minh_iqtreenewmodels_2020}. 
@@ -227,7 +263,7 @@ However, this must be put in the context of \figref{fig:hamming_real_arnet}: seq
 The difference in sequence diversity for the two methods is in part explained by the central panel of \figref{fig:diversity_likelihood_arnet}, which shows the Hamming distance between reconstructed ancestors and the consensus sequence of the multiple sequence alignment at the leaves. 
 It appears there that for deep nodes, IQ-TREE reconstructs sequences that are relatively similar to the consensus, with an average distance between the Bayesian reconstruction and the consensus of about $0.3$. 
 Contrasting with that, results of the autoregressive method shows less bias towards the consensus with an average distance of $0.4$ for deep nodes, in line with the real ancestors. 
-We also note that maximum likelihood sequences for both method are always closer to the consensus than Bayesian ones, which is a known bias of maximum likelihood \cite{williams_assessingaccuracyancestral_2006}. 
+We also note that maximum likelihood sequences for both method are always closer to the consensus than Bayesian ones, a bias of maximum likelihood already observed in the past \cite{williams_assessingaccuracyancestral_2006}. 
 
 The bias induced by ignoring the equilibrium distribution of the sequences is also visible in the right panel of \figref{fig:diversity_likelihood_arnet}: it shows the log-likelihood of reconstructed and real ancestral sequences according to the generative model. 
 Note that the log-likelihood here comes from the log-probability of \eqref{eq:autoregressive_def} and can be interpreted as the ``quality'' of a sequence according to the generative model. 

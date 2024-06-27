@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.40
+# v0.19.41
 
 using Markdown
 using InteractiveUtils
@@ -26,16 +26,17 @@ begin
 	using DataFramesMeta
 	using EasyFit
 	using JSON3
+	using Measures
 	using PlutoUI
 	using StatsBase
 	using StatsPlots
 end
 
-# ╔═╡ dea00e2e-8bea-4715-af4f-4b15ebeb792e
-md"# Setup"
-
 # ╔═╡ ff4bc077-81bc-4dd7-80de-58ba09f4ff76
 include(joinpath(homedir(), ".julia/config/plot_defaults.jl"))
+
+# ╔═╡ dea00e2e-8bea-4715-af4f-4b15ebeb792e
+md"# Setup"
 
 # ╔═╡ 4158b556-77a3-443c-96ef-2b90bab9ec97
 let
@@ -51,6 +52,23 @@ TOOLS = pluto_ingredients(scriptsdir(
 	"figures_and_results/branch_reconstruction.jl"
 ))
 
+# ╔═╡ 94e3fc55-8a73-494d-8e5e-8f7aae8b554d
+fam_main = "PF00072"
+
+# ╔═╡ 8ed7f4ca-343f-45d5-8333-25ee836a81db
+savedir = projectdir("notes/article/figures/SI/")
+
+# ╔═╡ 7a763db5-9890-4c8d-b468-c93239a2aeb4
+fam_from_folder(folder) = split(basename(folder), "_")[1]
+
+# ╔═╡ c9981050-3a9c-4cda-b1f3-145de001713e
+method_from_folder(folder) = @chain folder begin
+	splitpath
+	_[end-1]
+	split("_")
+	getindex(1)
+end
+
 # ╔═╡ 6331fa1c-6d4c-43e2-94bd-d755f9a85e82
 md"# Loading data"
 
@@ -58,7 +76,6 @@ md"# Loading data"
 folder_list = vcat(
 	readdir(datadir("simulated/potts_yule"); join=true),
 	readdir(datadir("simulated/arnet_yule"); join=true),
-	readdir(datadir("simulated/regimes/arnet_yule"); join=true),
 )
 
 # ╔═╡ 67bf7432-fd4d-410d-bb70-6e8344d7572e
@@ -89,10 +106,11 @@ simulation_parameters = JSON3.read(
 # ╔═╡ baee935b-9491-40d2-92eb-a648a190d1eb
 strategies = collect(keys(branch_data))
 
-# ╔═╡ c777c3bf-40ee-45dc-8a58-e85430447aaa
-begin
-	max_dist = maximum(pair_data["iqtree"].distance_real)
-end
+# ╔═╡ 4a9f6f32-8ac5-43ee-8874-6a651546099f
+max_dist_real = maximum(pair_data["iqtree"].distance_real)
+
+# ╔═╡ 6ecb98ae-d792-4307-8a63-d212eb4c24fe
+max_dist_inf = maximum(pair_data["autoregressive"].distance_inferred)
 
 # ╔═╡ b587e52b-5330-4ced-9a40-2cb39dac0ae4
 md"# Figures"
@@ -108,9 +126,6 @@ _fs
 
 # ╔═╡ 9389795a-45fb-4ea5-b43d-c0599a6fe218
 md"## Pairwise distance - Cumulative distribution"
-
-# ╔═╡ 23b9dd42-ca88-4a80-8c8c-93e671458e1c
-md"## Branch length: inferred vs real"
 
 # ╔═╡ 6c407d72-2b03-4ae4-a95b-463fb438d711
 md"## Error vs depth"
@@ -186,73 +201,47 @@ begin
 	end
 end
 
-# ╔═╡ 20dd2eee-7c45-43bd-b3f5-203a263c0490
-let p = plot()
-	strat = "iqtree"
-	@df pair_data[strat] scatter!(
-		:distance_real, :distance_inferred;
-		label = "", marker = (3, .5, stroke(0), strat_clr[strat]),
-	)
-	# plot!([0, max_dist], [0, max_dist], label="", line = (:black, :dash))
-
-	plot!(
-		xlabel = "real distance",
-		ylabel = "inferred distance",
-		title = "Distance between leaves - $strat",
-	)
-end
-
-# ╔═╡ 62ce5f5e-787e-4ff1-810e-7d0aae2ee67c
-let p = plot()
-	strat = "autoregressive"
-	@df pair_data[strat] scatter!(
-		:distance_real, :distance_inferred;
-		label = "", marker = (3, .5, stroke(0), strat_clr[strat]),
-	)
-	# plot!([0, max_dist], [0, max_dist], label="", line = (:black, :dash))
-
-	plot!(
-		xlabel = "real distance",
-		ylabel = "inferred distance",
-		title = "Distance between leaves - $strat",
-	)
-end
-
 # ╔═╡ 26699dfd-04f5-40ce-a59d-142603b5c1fe
-let p = plot()
+plt_dist_inf_v_real = let p = plot()
 	for strat in strategies
 		@df pair_data[strat] scatter!(
 			:distance_real, :distance_inferred;
 			label = "", marker = (3, .5, stroke(0), strat_clr[strat]),
 		)
 	end
-	# plot!([0, max_dist], [0, max_dist], label="", line = (:black, :dash))
-
+	
 	# Linear fit AR v real using the f leftmost points
 	f = 0.05
 	X, Y = @chain pair_data["autoregressive"] begin
 		sort(:distance_real)
 		_.distance_real, _.distance_inferred
 	end
-	L = Int(round(length(X) * f))
-	linfit = fitlinear(X[1:L], Y[1:L])
-	plot!(X, linfit.(X), line=(:black), label="linear fit - short times")
+
+	if method_from_folder(folder_full) == "arnet"
+		plot!([0, max_dist_real], [0, max_dist_real], label="", line = (:black, :dash))
+	end
+	
+	# Linear fit on short distances
+	# L = Int(round(length(X) * f))
+	# linfit = fitlinear(X[1:L], Y[1:L])
+	# plot!(X, linfit.(X), line=(:black), label="")
 	
 	plot!(
 		xlabel = "real distance",
 		ylabel = "inferred distance",
 		title = "Distance between leaves",
+		ylims = (-0.25, max_dist_inf * 0.7),
 	)
 end
 
 # ╔═╡ ab30475e-a052-4dc4-b316-42b33d2d2205
-let p = plot()
-	dvals = range(0, max_dist * 1.2, length=1000)
+plt_dist_cumulative = let p = plot()
+	dvals = range(0, max_dist_real * 1.2, length=1000)
 
 	
 	for strat in strategies
 		cdf = ecdf(pair_data[strat].distance_inferred)
-		plot!(dvals, cdf.(dvals); label = strat, line = linestyle(strat))
+		plot!(dvals, cdf.(dvals); label = "inferred - $strat", line = linestyle(strat))
 	end
 	cdf = ecdf(pair_data[strategies[1]].distance_real)
 	plot!(dvals, cdf.(dvals); label = "real", line = (:dash, :black))
@@ -260,8 +249,31 @@ let p = plot()
 	plot!(
 		xlabel = "distance",
 		ylabel = "",
-		title = "Distance between leaves: cumulative distribution",
+		title = "Cumulative distribution of distance between leaves",
+		legend = :bottomright,
+		legendfontsize = 18,
+		xlim = extrema(dvals) .* 1.1,
 	)
+end
+
+# ╔═╡ 9167990a-33ed-41d9-a0c4-e3c6dfedf872
+if fam_from_folder(folder_full) == fam_main
+	fam = fam_from_folder(folder_full)
+	method = method_from_folder(folder_full)
+
+	p = plot(
+		plt_dist_inf_v_real, plt_dist_cumulative;
+		layout = grid(1,2),
+		size = (1600, 800),
+		margin = 10mm,
+		dpi = 300,
+	)
+
+	if method == "arnet"
+		savefig(p, joinpath(
+			savedir, "branch_length_reconstruction_$(method)_$(fam).png"
+		))
+	end
 end
 
 # ╔═╡ Cell order:
@@ -271,6 +283,10 @@ end
 # ╠═4158b556-77a3-443c-96ef-2b90bab9ec97
 # ╠═93396504-09f3-44a5-a23d-834784b41218
 # ╠═4d06f815-17e9-41cf-9a5a-2c88e917665d
+# ╠═94e3fc55-8a73-494d-8e5e-8f7aae8b554d
+# ╠═8ed7f4ca-343f-45d5-8333-25ee836a81db
+# ╠═7a763db5-9890-4c8d-b468-c93239a2aeb4
+# ╠═c9981050-3a9c-4cda-b1f3-145de001713e
 # ╟─6331fa1c-6d4c-43e2-94bd-d755f9a85e82
 # ╠═53b74403-c8b2-4bb0-9038-50ef587bc2bf
 # ╠═67bf7432-fd4d-410d-bb70-6e8344d7572e
@@ -278,17 +294,16 @@ end
 # ╠═6413baf8-deea-46e5-b609-896f95f7e4e8
 # ╠═b93e7a60-9cbc-4f65-8083-ef58841ced47
 # ╠═baee935b-9491-40d2-92eb-a648a190d1eb
-# ╠═c777c3bf-40ee-45dc-8a58-e85430447aaa
+# ╠═4a9f6f32-8ac5-43ee-8874-6a651546099f
+# ╠═6ecb98ae-d792-4307-8a63-d212eb4c24fe
 # ╟─b587e52b-5330-4ced-9a40-2cb39dac0ae4
 # ╟─bd983086-a0ae-4072-b191-b1fcd63ed4e7
 # ╠═1bc4405a-3249-4886-92e9-913b9516f221
-# ╟─20dd2eee-7c45-43bd-b3f5-203a263c0490
-# ╟─62ce5f5e-787e-4ff1-810e-7d0aae2ee67c
 # ╠═fc4dabcc-dfe7-411b-a485-2559ab136b5a
 # ╠═26699dfd-04f5-40ce-a59d-142603b5c1fe
 # ╟─9389795a-45fb-4ea5-b43d-c0599a6fe218
 # ╠═ab30475e-a052-4dc4-b316-42b33d2d2205
-# ╟─23b9dd42-ca88-4a80-8c8c-93e671458e1c
+# ╠═9167990a-33ed-41d9-a0c4-e3c6dfedf872
 # ╟─6c407d72-2b03-4ae4-a95b-463fb438d711
 # ╠═439679e1-b121-4f82-a68e-a311af5280ee
 # ╠═2484add9-eb75-4a32-81e6-6a5ac68a6b39

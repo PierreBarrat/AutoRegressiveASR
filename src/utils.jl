@@ -29,3 +29,16 @@ end
 
 # loglikelihood(sequence, model::DCAGraph) = -DCAToosl.energy(model, sequence)
 # loglikelihood(sequence, model::ArNet) = ArDCA.loglikelihood(sequence, model)
+# local field
+function ar_local_field(s, i, arnet)
+    j = findfirst(==(i), arnet.idxperm) - 1
+    if j == 0
+        return arnet.p0
+    end
+
+    H = copy(arnet.H[j])
+    for k in 1:(j-1)
+        H += arnet.J[j][:, s[arnet.idxperm[k]], k]
+    end
+    return ArDCA.softmax(H)
+end
