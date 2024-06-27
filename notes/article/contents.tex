@@ -354,14 +354,21 @@ Results presented in this work are obtained by averaging over $M=100$ such simul
 
 \subsection{Experimental evolution data}
 
-We use the data coming from the experimental evolution of the PSE-1 protein, published in \cite{stiffler_proteinstructureexperimental_2020}. 
+To validate the proposed method, we use data from Directed Evolution experiment on Beta-lactamase PSE-1 published in \cite{stiffler_proteinstructureexperimental_2020}.
+Beta-lactamase is an enzyme produced by bacteria that provides them with resistance to a certain class of antibiotics known as \textit{beta-lactam antibiotics}. Its activity relies on the ability to break, through hydrolysis, a certain molecular structure common to all \textit{beta-lactam antibiotics}, the \textit{beta-lactam ring}, inhibiting the antibacterial property of these antibiotics.
+In \cite{stiffler_proteinstructureexperimental_2020} the Wild Type (WT) sequence, 266 aminoacids long, has undergone 20 rounds of controlled evolution with an average target mutation rate of approximately 3\%-4\% per round, and the selected feature is their antibiotic resistance in E.Coli in the presence of ampicillin, slightly above the minimal inhibitory concentration. In these conditions, the percentage of bacterial population that survived selection is approximately 1\% (approx. $5 \times 10^4$ cells).
+At round 20, the last one of the experiment, the library of mutated variants has accumulated an average Hamming distance from WT of 12.9\% and an average pairwise distance of 19.8\%.
 
-\begin{itemize}
-	\item A word on the wild-type and what it does
-	\item A brief summary of the experiment. What diversity is obtained after 20 rounds? What is the population size?
-	\item what the corresponding pfam is, where we got the sequences (ref.)
-	\item the alignment methodology
-\end{itemize}
+A family of 42k homologous sequences is avalible from PFAM with code PF13354.
+For this family, an Hidden Markov Model (HMM) of length 214, built on 66 seed sequences, is contextually available.
+We aligned the experimental sequences to the family HMM according to the follwing procedure:
+\begin{enumerate}
+	\item The WT sequence has been aligned according to the HMM using HMMER.
+	\item The insertion sites has been removed from the aligned WT sequence.
+	\item The corresponding insertion sites has been removed from all the other sequences from the experimentl library.
+	\item Gap sites in the aligned WT sequence has been inserted to all the other experimental sequences.
+\end{enumerate}
+This method ensures that all the aligned positions correspond to the same one for all tested sequences. We remark that in doing this we make the reasonable assumption that all the experimental sequences are aligned to the HMM in same way the WT is aligned to the HMM.
 
 \subsection{iqtree}
 
