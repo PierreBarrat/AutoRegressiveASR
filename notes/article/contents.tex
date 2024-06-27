@@ -280,12 +280,33 @@ An interesting result of this work is that it is possible to recover structural 
 
 Here, we use this data as a test setting for ASR: the sequences obtained after directed evolution all derive from a common ancestor, the wild-type, for which we know the amino acid sequence. 
 We can thus reconstruct the wild-type sequence using different ASR methods and compare it to the ground truth. 
+The phylogeny is not known, but given the large populatin size during the experiment and the relatively low number of selection rounds, it is reasonable to approximate it using a star-tree, \emph{i.e.} a tree with a single coalescent event taking place at the root (see Methods). 
+Since the reconstruction task is most interesting when using relatively varied sequences, we decide to use data for the PSE-1 wild-type where $20$ cycles of mutagenesis \& selection have been performed, resulting in a mean Hamming distance of $12\%$ to the wild-type. 
 
-Here, we recognize that this experiment 
-- set of relatively diverse sequences with a joint evo history (phylogeny)
-- known sequence for the MRCA. 
+Our ASR procedure is as follows. 
+We randomly pick $M$ amino acid sequences among the proteins evolved from PSE-1 and with $20$ cycles of mutagenesis \& selection, with $3 \leq M \leq 640$. 
+The total number of sequences at round $20$ of directed evolution is much larger, making it computationally hard to use all of them. 
+We then construct a star-like phylongeny and place the $M$ selected sequences at the leaves, and perform ASR using either IQ-TREE or our autoregressive method which we have trained on an alignment of PSE-1 homologs.
+We obtain the reconstructed amino acid sequence of the root, which we can then compare to the actual wild-type. 
+As a comparison, and because our approximation of the phylogeny is very simple, we also attempt to reconstruct the root by taking the consensus sequence of the $M$ leaves. 
+We repeat this procedure $100$ times for each value of $M$ for a statistical assessment of the different methods. 
 
+The results are shown in \figref{fig:stiffler}. 
+The left panel shows the average non-normalized Hamming distance to the wild-type as a function of the number of leaves used $M$. 
+For a low $M$, all methods understandably make a large number of errors, with a mean Hamming distance larger than $10$ for $M=3$. 
+For a higher $M$, IQ-TREE and the autoregressive method stabilize to a fixed number of errors: we find a Hamming distance of $\sim 4.3$ for IQ-TREE and $\sim 2.9$ for the autoregressive. 
+The consensus curiously reaches a minimum at intermediate $M$, a fact commented in the \SI, and saturates at a Hamming distance of $6$ when considering all sequences of the round $20$. 
+The reconstruction errors are overwhelmingly located at six sequence positions. 
+In the central panel, the fraction of mistakes made at these six positions over the $100$ repetitions of $M=640$ leaves is shown for each method. 
+We observe that there are two positions (129 and 152) where IQ-TREE systematically fails at recovering the wild-type state while the autoregressive model's reconstruction is correct. 
+Inversely, IQ-TREE recovers the wild-type state more often at position 68. 
+The right panel shows the logo of the set of reconstructed sequences at these 6 positions and for each method. 
 
+Overall, we see that the reconstruction of the autoregressive model is more accurate. 
+This gain in accuracy comes from the representation of the functional constraints acting on the PSE-1 protein by the generative model, which are inferred separately using an alignment of homologs.  
+The improvement in reconstruction errors is modest, going from an average Hamming distance of $4.3$ to $2.9$. 
+However, the gain is intrisically limited by the data itself: the evolved sequences have an average Hamming distance of about $12\%$ to the ancestor, which is experimentally challenging but remains small compared to the divergence found in the homologs of PSE-1. 
+For instance, the root-to-tip distance estimated by IQ-TREE and the autoregressive model are respectively $0.13$ and $0.15$, corresponding to the regime of shallow trees when comparing with \figref{fig:hamming_real_arnet}.
 
 
 \begin{figure}
@@ -293,8 +314,8 @@ Here, we recognize that this experiment
 	\includegraphics[width = \textwidth]{figures/stiffler_reconstruction.png}
 	\caption{
 		Reconstruction of the wild-type PSE1 sequence used in \cite{stiffler_proteinstructureexperimental_2020} using sequences from round $20$ of the directed evolution. 
-		The \emph{consensus} method simply estimates the root of the tree using the consensus of the aligned leaf sequences. 
-		\textbf{Left.} Non normalized Hamming distance to the wild-type PSE1 sequence as a function of the number of sequences $M$ used for reconstruction. The fact that the consensus method has a local minimum is discussed in the \SI.
+		\textbf{Left.} Non normalized Hamming distance to the wild-type PSE1 sequence as a function of the number of sequences $M$ used for reconstruction. The fact that the consensus method has a local minimum is discussed in the \SI. For comparison, the average distance between a leaf sequence and the wild-type is $25$.
+		The error bars are computed using the standard deviation obtained from the $100$ choices of sequences. 
 		\textbf{Middle.} For the six sequence positions where most of the reconstruction errors are located, fraction of errors of each method out of $100$ independent reconstructions using different sets of $M = 640$ leaves. 
 		\textbf{Right.} Sequence logo of the reconstructed sequence for the three methods, obtained using $100$ independent reconstructions with different sets of $M = 640$ leaves. The logo is only shown for the six positions where most errors are located. 
 		For example, all three methods fail $100$ times at position $147$, reconstructing a leucine $L$ instead of a phenylalanine $F$.
@@ -329,7 +350,12 @@ Conditional probabilities $p_i$ are defined as
 \end{equation}
 
 with the $i$ $q$-dimensional vectors $J_{i\cdot}$ and $h_i$ are learned parameters. 
-It was shown in \cite{trinquier_efficientgenerativemodeling_2021} that such a parametrization captures essential features of the variability of members of a proteins family. 
+The model is normally trained using a multiple sequence alignment of homologous proteins, \emph{i.e.} a protein family, by finding the parameters $J$ and $h$ that maximize the likelihood of the sequences. 
+It was shown in \cite{trinquier_efficientgenerativemodeling_2021} that this specific parametrization captures essential features of the variability of members of a protein family.
+
+By definition, homologous proteins share a joint evolutionary history and cannot be considered as statistically independent. 
+To avoid biases, a reweighting is applied to sequences based on their vicinity to other sequences. 
+This scheme has been showed to substantially increase the performance of such models \cite{cocco_inversestatisticalphysics_2018}. 
 
 \subsection{Branch length inference}
 
@@ -370,7 +396,18 @@ We aligned the experimental sequences to the family HMM according to the follwin
 \end{enumerate}
 This method ensures that all the aligned positions correspond to the same one for all tested sequences. We remark that in doing this we make the reasonable assumption that all the experimental sequences are aligned to the HMM in same way the WT is aligned to the HMM.
 
+It has been noticed in \cite{bisardi_modelingsequencespaceexploration_2021} that taking into account the transition possibilities between amino acids allowed by the genetic code is important when describing short term evolutionary dynamics with generative models. 
+In our framework, a natural way to include these is by using the symetric matrix $\mathbf{H}$ in the decomposition of \eqref{eq:Q_decomposition}. 
+Terms of the $\mathbf{H}$ matrix do not affect the equilibrium distribution of the model, which thus remains generative, but influences the short term dynamics. 
+Here, we simply counted the number of possibilities to transition from any amino acid to any other based on the genetic code, and we constructed the corresponding $\mathbf{H}$ matrix. 
+The diagonal matrix remains given by the equilibrium probabilities of amino acids in the context of the sequence, as given by \eqref{eq:autoregressive_site_propagator}.
+We found that this substantially improves the results of the autoregressive reconstruction for the experimental evolution data.
+
 \subsection{iqtree}
+
+% iqtree2 -asr -s $aln -te $tree -pre $(tot_prefix) --keep-ident -redo
+
+We run IQ-TREE using the \texttt{-asr}
 
 \begin{itemize}
 	\item how I run iqtree + results of model finder
