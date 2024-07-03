@@ -2,7 +2,7 @@
 
 \section{Introduction}
 
-Homologous proteins have a common evolutionary origin that can span billions of years. 
+Homologous proteins have a common evolutionary origin that can go back to billions of years. 
 Throughout their evolution, they diversify through mutations while selection preserves their function. 
 Consequently, many protein families consist of thousands of sequences that are highly variable and yet maintain similar structures and functions. 
 On the other hand, even a few mutations can destabilize a protein and destroy its function. 
@@ -12,30 +12,36 @@ Many probabilistic models of protein sequence evolution have been developed.
 Commonly used ones describe the evolution at each sequence position as a Markov chain across amino acid states, taking into account average properties of the substitution process such as more frequent transitions between similar amino acids \cite{dayhoff_modelevolutionarychange_1978,henikoff_aminoacidsubstitution_1992,jones_rapidgenerationmutation_1992}. 
 Variations in evolutionary speed at different sites are often represented by using a set of substitution rates to which sites can be assigned, usually coming from a Gamma distribution \cite{yang_maximumlikelihoodphylogenetic_1994}.
 An important and widely accepted assumption is that sequence positions evolve independently. 
-This has the advantage of greatly simplifying the analytical and numerical application, making them computationally manageable. 
+This has the advantage of greatly simplifying the analytical and numerical application, making models computationally manageable. 
 However, it comes at the cost of ignoring epistasis, that is the fact that the effect of a mutation depends on the rest of the sequence. 
 
-Uses: inferring phylogeny, and ASR. Description of ASR
+Sequence evolution models are used in the general field of phylogenetics which explores the evolutionary relations between proteins. 
+An important application is that of ancestral sequence reconstruction (ASR): given a set of homologous sequences and their phylogenetic tree, ASR consists in inferring likely sequences for the internal nodes of the tree, which correspond to extinct ancestral proteins. 
+Reconstructed proteins can then be synthesized and tested in the lab. 
+The technique is used to study the sequence-function relationship for instance to understand which mutations cause a change in
+enzymatic activity or binding specificity of a protein \cite{wouters_despecializationstepunderlying_2003,voordeckers_reconstructionancestralmetabolic_2012,hochberg_reconstructingancientproteins_2017}. 
+It can also be used to address evolutionary questions, such as the evolution of fundamental characteristics of proteins across the tree of life \cite{akanuma_experimentalevidencethermophilicity_2013,hobbs_originevolutionthermophily_2012}. 
 
-On the other hand: generative models from ensembles of homologous sequences. 
+The large amount of protein sequence data combined with recent theoretical and computational work has also allowed the development of generative protein sequence models. 
+These models build on the idea that the sequence variability among homologous protein with similar biological functions inform us about the sequence-function relationship. 
+In practice, generative models are trained using large amounts of protein sequences and consist of a probability distribution $P(\mathbf{s})$ over any potential amino acid sequence. 
+Classes of models include ones inspired from statistical physics such as the Potts model \cite{cocco_inversestatisticalphysics_2018} and restricted Boltzmann machines \cite{tubiana_learningproteinconstitutive_2019}, or based on neural networks such as transformers \cite{rao_msatransformer_2021,ferruz_protgpt2deepunsupervised_2022}. 
+A major achievement of these models is the possibility of using them to sample new artificial sequences that are distant from any natural protein but still functional \cite{tian_coevolutionaryfitnesslandscapes_2018,russ_evolutionbasedmodeldesigning_2020}.
 
-Typical models: ignore epistasis and functional constraints. Alignments from any family are treated in almost the same way. 
-Generative models: hard to do dynamics with. Proposed propagators: not analytical, can only be used for forward simulations. 
+An essential feature for the success of generative model is the modeling of \emph{epistasis}: the fact that the effect of a mutation depends on the rest of the sequence. 
+Epistasis is caused by interaction between amino acids, and is essential to describe the fitness landscape of a protein \cite{socolich_evolutionaryinformationspecifying_2005,mcgee_generativecapacityprobabilistic_2021}. 
+Interestingly, it has also been suggested that epistasis may be the cause of variable evolutionary rates across phylogenetic trees \cite{delapaz_epistaticcontributionspromote_2020}. 
+Since common sequence evolution models ignore epistasis, they can only represent a crude approximation of the evolutionary constraints acting on a protein. 
+Since the change of a protein sequence in time depends on functional constraints, it is reasonable to expect that an inaccurate representation of the fitness landscape negatively affects the modeling of dynamics. 
+On the other hand, the non-independence of mutations that characterizes generative models makes it challenging to use them for dynamical purposes, as most existing algorithms assume independence of positions. 
+Different groups have proposed using the Potts model to describe evolutionary dynamics, but current techniques allow for little analytical treatment and are limited to forward simulation of sequences \cite{alvarez_vivofunctionalphenotypes_2024,bari_emergenttimescales_2024}. 
+Consequently, they cannot be used for tasks such as inference of phylogenies or ancestral sequence reconstruction. 
 
-In this study, we extend the application of generative models to describe evolutionary dynamics. 
+In this study, we set out to extend the application of generative models to describe evolutionary dynamics. 
 First, we develop an analytically and numerically tractable sequence evolution model with generative properties, based on the so-called autoregressive architecture of protein generative models \cite{trinquier_efficientgenerativemodeling_2021}. 
-This model accounts for epistasis and is generative over long-term evolution. 
-We then apply our model to ancestral sequence reconstruction (ASR) and demonstrate, using simulated data, that it outperforms the state-of-the-art program IQ-TREE. 
+This model accounts for epistasis and is generative over long-term evolution, but also allows use of some of the standard algorithms used in phylogenetics such as Felsenstein's pruning algorithm \cite{felsensteinjoseph_inferringphylogenies_2003}. 
+We then apply our model to ancestral sequence reconstruction (ASR) and demonstrate, using simulated data, that it outperforms the state-of-the-art program IQ-TREE \cite{minh_iqtreenewmodels_2020}. 
 Finally, we validate our approach with recent experimental data on directed evolution, which to our knowledge is the first use of such data to evaluate reconstruction methods.
-
-\begin{itemize}
-	\item Proteins are important. Evolved for billions of years. Mutation + selection --> varied sequences with relatively conserved function/structure. Challenge to describe this evolution
-	\item How typical evolution models work, since JC69 and on. Applications to phylogenetic and ASR --> very important bioinformatic tools. However, do not take epistasis into account. 
-	\item On the other hand, generative models. List all cool things
-	\item Challenge to extend generative models to dynamics and to apply them to dynamical problems such as ASR. This is especially important for ASR, since conclusions depend on the quality of the reconstructed sequence 
-	\item Here, we proceed in two parts. First we develop an analytically tractable dynamical generative model based on ArDCA
-	\item Second, we test its capacity to perform ASR on simulated and directed evolution data
-\end{itemize}
 
 \section{Results} % (fold)
 \label{sub:results}
@@ -62,7 +68,7 @@ where $\mathbf{H}$ is symmetric and $\mathbf{\Pi}$ is diagonal with entries that
 The two matrices have simple interpretations. 
 On the first hand, $\mathbf{\Pi}$ fixes the long-term equilibrium frequencies, that is $P(b \vert a, t) \xrightarrow[t \rightarrow \infty]{} \pi_b$.
 On the other, $\mathbf{H}$ influences the dynamics of the Markov chain but does not change the equilibrium distribution. 
-Most commonly, $\mathbf{\Pi}$ is considered to be independent of the sequence position $i$, while $\mathbf{H}$ can be multiplied by position-dependent rates in order to model the different variability of different sites \cite{yang_maximumlikelihoodphylogenetic_1994,stamatakis_raxmlversiontool_2014,nguyen_iqtreefasteffective_2015}. \\
+Most commonly, $\mathbf{\Pi}$ is considered to be independent of the sequence position $i$, while $\mathbf{H}$ can be multiplied by position-dependent rates in order to model the different variability of different sites \cite{yang_maximumlikelihoodphylogenetic_1994}. \\
 
 
 In order to incorporate constraints coming from a protein's structure and function into the evolutionary model, we develop a family-specific model of protein sequence evolution based on the the autoregressive generative model ArDCA \cite{trinquier_efficientgenerativemodeling_2021}. 
@@ -118,7 +124,7 @@ An important consequence of this choice is that our evolution model will converg
 	\;\; P(\mathbf{b} \vert \mathbf{a}, t) \xrightarrow[t \rightarrow \infty]{} P^{AR}(\mathbf{b}).
 \end{equation}
 
-We argue here that such a property is essential to build a realistic protein sequence evolution model, particularly when considering evolution over a relatively long time frame. 
+We argue here that such a property is essential to build a realistic protein sequence evolution model, particularly when considering evolution over long periods. 
 Note that to converge to a generative distribution, accurate modeling of epistasis is required. 
 Using site-specific frequencies would not be sufficient, as the effect of mutations in a protein sequence typically depends on the context \cite{socolich_evolutionaryinformationspecifying_2005}. 
 The technique proposed here allows us to represent epistasis through the context dependent probabilities $p_i$, while still considering each sequence position one at a time. 
@@ -132,7 +138,7 @@ In practice, this means that algorithms using this model have to be adapted acco
 We underline that this approach has important differences with standard models of evolution used in phylogenenetics. 
 In phylogenetic reconstruction, the tree and the sequence evolution model are usually inferred at the same time and from the same data. 
 The number of parameters of the evolution model is then kept low to reduce the risk of overfitting, for instance by using site specific rates to account for variable and conserved sites. 
-Methods that introduce more complex models such as site specific frequencies do so by jointly inferring the parameters and the tree, leading to relatively complex algorithms \cite{halpern_evolutionarydistancesproteincoding_1998a,puller_efficientinferencepotential_2020}.
+Methods that introduce more complex models such as site specific frequencies do so by jointly inferring the parameters and the tree, leading to computationally intensive algorithms \cite{halpern_evolutionarydistancesproteincoding_1998a,puller_efficientinferencepotential_2020}.
 
 Here instead, parameters of the generative model in \eqref{eq:autoregressive_def} are learned from a protein family, \emph{i.e.} a set of diverged homologous protein sequences. 
 While it is true that these sequences share a common evolutionary history and cannot be considered as independent samples, common learning procedures only account for this in a very crude way \cite{cocco_inversestatisticalphysics_2018,trinquier_efficientgenerativemodeling_2021}.
@@ -263,7 +269,7 @@ However, this must be put in the context of \figref{fig:hamming_real_arnet}: seq
 The difference in sequence diversity for the two methods is in part explained by the central panel of \figref{fig:diversity_likelihood_arnet}, which shows the Hamming distance between reconstructed ancestors and the consensus sequence of the multiple sequence alignment at the leaves. 
 It appears there that for deep nodes, IQ-TREE reconstructs sequences that are relatively similar to the consensus, with an average distance between the Bayesian reconstruction and the consensus of about $0.3$. 
 Contrasting with that, results of the autoregressive method shows less bias towards the consensus with an average distance of $0.4$ for deep nodes, in line with the real ancestors. 
-We also note that maximum likelihood sequences for both method are always closer to the consensus than Bayesian ones, a bias of maximum likelihood already observed in the past \cite{williams_assessingaccuracyancestral_2006}. 
+We also note that maximum likelihood sequences for both method are always closer to the consensus than Bayesian ones, a bias of maximum likelihood already that had already been observed \cite{williams_assessingaccuracyancestral_2006}. 
 
 The bias induced by ignoring the equilibrium distribution of the sequences is also visible in the right panel of \figref{fig:diversity_likelihood_arnet}: it shows the log-likelihood of reconstructed and real ancestral sequences according to the generative model. 
 Note that the log-likelihood here comes from the log-probability of \eqref{eq:autoregressive_def} and can be interpreted as the ``quality'' of a sequence according to the generative model. 
@@ -395,12 +401,16 @@ This scheme has been showed to substantially increase the performance of such mo
 
 \subsection{Branch length inference}
 
-\begin{itemize}
-	\item how it works generally
-	\item why I can't use AR directly
-	\item how we do it with the profile model
-	\item refer to the SI figure for results
-\end{itemize}
+With site independent models, optimizing branch lengths of a fixed topology tree to maximize the likelihood of the data is a straightforward task, using for example an algorithm described in \cite{felsensteinjoseph_inferringphylogenies_2003}.
+However, this requires an explicit summation over all states at given internal nodes, which we cannot perform using our autoregressive model. 
+The idea we use to reconstruct ancestral sequences, \emph{i.e.} inferring the amino acid states of sites one by one in the context of the previous ones, is not applicable here. 
+However, since the dynamics of our autoregressive model is \emph{a priori} quite different from standard models used in IQ-TREE, we prefer to re-infer branch lengths before the ancestral reconstruction.
+
+To work around this issue, we infer branch lengths using a model site-specific frequencies and a unique substitution rate. 
+The site-specific frequencies are chosen so as to match the ones found in a large and long-term sample of our autoregressive model.
+In this way, we infer branch lengths in a tractable way, using a model that differs from the autoregressive only in the epistatic interactions and not in the conservation profile. 
+Figure~\sref{sfig:branch_length_reconstruction} shows the good quality of the reconstruction using this technique. 
+
 
 \subsection{Simulations}
 
@@ -439,13 +449,16 @@ Here, we simply counted the number of possibilities to transition from any amino
 The diagonal matrix remains given by the equilibrium probabilities of amino acids in the context of the sequence, as given by \eqref{eq:autoregressive_site_propagator}.
 We found that this substantially improves the results of the autoregressive reconstruction for the experimental evolution data.
 
-\subsection{iqtree}
+\subsection{Reconstruction with IQ-TREE}
 
 % iqtree2 -asr -s $aln -te $tree -pre $(tot_prefix) --keep-ident -redo
 
-We run IQ-TREE using the \texttt{-asr}
+We run IQ-TREE using the \texttt{-asr} flag to generate states at internal nodes of the tree. 
+By default, IQ-TREE reconstructs the maximum likelihood sequence at internal nodes. 
+It also generates a ``state'' file containing the posterior probabilities of amino acids at each internal node, from which we sample to obtain the Bayesian reconstruction. 
 
-\begin{itemize}
-	\item how I run iqtree + results of model finder
-\end{itemize}
+On simulated data, we ran IQ-TREE using the model finder routine to select the evolutionary model \cite{kalyaanamoorthy_modelfinderfastmodel_2017}. 
+The model most frequently found was based on the PMB matrix \cite{veerassamy_transitionprobabilitymodel_2003}, with different options for rates, \emph{e.g.} \texttt{+G4}, \texttt{+I+G4} or \texttt{+R4}. 
+On the directed evolution data, the two most frequently found models  were JTT \cite{jones_rapidgenerationmutation_1992} and the between patient HIV model of \cite{nickle_hivspecificprobabilisticmodels_2007}. 
+Since the latter is clearly unrelated to the protein that is considered here, we used the \texttt{JTT+G4} model for reconstruction. 
 
