@@ -1,3 +1,5 @@
+% !TEX root = main.tex
+
 \begin{center}
 \textbf{\large Supplementary Material: \papertitle}
 \end{center}
@@ -5,10 +7,161 @@
 \section{Autoregressive evolution model} % (fold)
 \label{sec:autoregressive_evolution_model}
 
-\begin{itemize}
-	\item Show the simplified expression for H=1
-	\item discuss irreversibility, with example
-\end{itemize}
+\subsection{Simplified expression for a homogeneous $\mathbf{H}$ }
+
+For each site $i$, the main difference between our model and a traiditional GTR is that the equilibrium frequencies of the Markov chain are computed using the context at the previous sites $1,\ldots,i-1$. 
+Considering \eqref{eq:Q_decomposition} and \eqref{eq:autoregressive_site_propagator}, this means that the diagonal matrix is determined using the generative model. 
+On the other hand, the symetric matrix $\mathbf{H}$ can be given any value without changing the long term generative properties of the dynamical model, \emph{i.e.} \eqref{eq:autoregressive_long_term}. 
+Here, we show that if the transitions defined by $\mathbf{H}$ are uniform, \emph{i.e.} $H_{ab} = \mu$ for any $a \neq b$, the propagator takes a simplified form: 
+
+\begin{equation}
+\begin{split}
+	\label{eq:autoregressive_simplified_propagator}
+	&q_i(b_i \vert a_i, b_{<i}, t) = e^{-\mu t} \delta_{a_i, b_i} + (1- e^{-\mu t})p_i(b_i \vert b_{<i}),\\
+	&P(\mathbf{b} \vert \mathbf{a}, t) = \prod_{i=1}^L q_i(b_i \vert a_i, b_{<i}, t).
+\end{split}
+\end{equation}
+The interpretation of the site propagator $q_i(b_i \vert a_i, b_{<i}, t)$ is straightforward: if no mutation occurs with probability $e^{-\mu t}$, site $i$ remains in its original state $a_i$; otherwise, with probability $(1- e^{-\mu t})$, it is resampled using the equilibrium probability given by the generative model and the context of the sequence $p_i(b_i \vert b_{<i})$. 
+Note that the assumption of a scalar matrix is reasonable if one wishes to ignore the different transition rates between amino-acids. 
+
+
+% To prove that the expression above is correct, we use the simplifying assumption that $H_{ab} = 1$ for any $a \neq b$. 
+% The generalization to an arbitrary $\mu$ is straightforward. 
+To lighten notation, we drop the explicit dependence on the position $i$ and the sequence context $b_{<i}$ by defining $p_b = p_i(b_i \vert b_{<i})$.
+We will then compute the $n$ eigenvectors and eigenvalues of $\mathbf{Q}$, where $n = 21$ for the amino acids and gap symbol. 
+First, note that for the continuous time Markov chain to be well defined, we need the rows of $\mathbf{Q}$ to sum to $0$. 
+We thus have the following expression for the elements of $\mathbf{Q}$: 
+
+$$
+Q_{ab} = \mu \begin{cases}
+			p_b, & \text{if $a \neq b$},\\
+            -\sum_{c\neq a} p_c = p_a - 1, & \text{if $a = b$}.
+		 \end{cases}
+$$
+
+This means that the vector $\vec{p} = (p_1, \ldots, p_n)$ is the left-eigenvector of $\mathbf{Q}$ associated to eigenvalue $0$:
+
+\begin{align*}
+	\left(\vec{p}^{\,T}\mathbf{Q}\,\right)_b &= \sum_a p_a Q_{ab}\\ 
+	&= \mu\sum_{a\neq b} p_a p_b - p_b \mu \sum_{c\neq b} p_c = 0.
+\end{align*}
+Since the dynamics of the Markov chain are given by $\frac{\text{d}\vec{x}}{\text{d}t} = \vec{x}^{\,T} \mathbf{Q}$, this implies that $\vec{p}$ is an equilibrium state of the chain, as expected. 
+
+We now prove that the other $n-1$ eigenvalues are equal to $-\mu$. 
+Consider a vector $\vec{v}$ orthogonal to $\vec{p}$. 
+The following calculation shows that $\vec{v}$ is a right-eigenvector of $\mathbf{Q}$ with eigenvalue $-\mu$: 
+
+\begin{equation}
+\begin{split}
+	\left(\mathbf{Q} \vec{v}\,\right)_a &= \sum_b Q_{ab} v_b\\
+	&= \mu\left( \sum_{b\neq a} p_b v_b - (p_a - 1)v_a \right)\\
+	&= \mu\left( \langle\vec{p}, \vec{v}\rangle - v_a \right)\\
+	&= -\mu v_a.
+\end{split}
+\end{equation}
+
+The space of vectors orthogonal to $\vec{p}$ is of dimension $n-1$, therefore eigenvalue $-\mu$ is degenerate and the corresponding eigenvectors span a space of dimension $n-1$. 
+We call $\vec{v}^{\,2}, \ldots, \vec{v}^{\,n}$ an orthogonal basis of this space. 
+As the rows of $\mathbf{Q}$ sum to $0$, the remaining eigenvector is $\vec{v}^{\,1} = (1, \ldots, 1)$ and is associated to eigenvalue $0$. 
+Similarly, we can also show that there exist $n-1$ left-eigenvectors associated to the eigenvalue $-\mu$, which note $\vec{u}^{\,2}, \ldots, \vec{u}^{\,n}$, defined by the relation $\langle\vec{u}^{\,a}, \vec{v}^{\,1}\rangle$ = 0. 
+The first left-eigenvector is of course $\vec{u}^{\,1} = \vec{p}$. 
+
+With the right choice of the basis $\vec{v}^{\,2}, \ldots, \vec{v}^{\,n}$ and $\vec{u}^{\,2}, \ldots, \vec{u}^{\,n}$, we have the relation $\langle{u}^a, \vec{v}^{\,a}\rangle = \delta_{ab}$. 
+This means that we can write $\mathbf{Q}$ as
+
+$$\mathbf{Q} = \mathbf{V\Lambda U},$$
+
+where $\mathbf{V}$ has the right eigenvectors as columns, $\mathbf{U}$ the left eigenvectors as rows, and 
+
+$$\mathbf{\Lambda} = \begin{pmatrix}
+0 & & & \\
+& -\mu & & \\
+& & \ddots & \\
+& & & -\mu \\
+\end{pmatrix}.
+$$
+
+We now compute the transition probability $q(b \vert a, t)$ by computing the exponential of $\mathbf{Q}$: 
+
+\begin{equation}
+\begin{split}
+	q(b \vert a, t) &= \left(e^{\mathbf{Q}t}\right)_{ab}\\
+	&= \left(\mathbf{V}e^{\Lambda t} \mathbf{U}\right)_{ab}\\
+	&= \sum_{c=1}^n v_a^c e^{\Lambda_{cc}t}  u_b^c\\
+	&= e^{-\mu t} \sum_c v_a^c u_b^c + (1-e^{-\mu t})v_a^1 u_b^1,
+\end{split}
+\end{equation}
+where we have used the fact that $\Lambda_{cc} = -\mu$ for $c>1$ and $0$ for $c=1$. 
+Using the fact that $\mathbf{V}$ and $\mathbf{U}$ are each other's inverse, we have that $\sum_c v_a^c u_b^c = \delta_{ab}$. 
+Furthermore, $v_a^1=1$ and $u_b^1 = p_b$
+We thus obtain the desired result: 
+
+\begin{equation}
+	q(b \vert a, t) = e^{-\mu t} \delta_{ab} + (1-e^{-\mu t}) p_b.
+\end{equation}
+
+
+\subsection{Irreversibility of the autoregressive evolution model}
+
+For each position $i$ and given a sequence context, the autoregressive model has the same structure as classical sequence evolution models. 
+In particular, it is time reversible: given any two amino acid states $a_i$ and $b_i$, there is no objective way of determining whether  $a_i$ evolved in to  $b_i$ or the reverse. 
+However, the propagator for full sequences \eqref{eq:autoregressive_propagator_full} is \emph{time irreversible}. 
+We demonstrate this using a simple example. 
+
+For a stochastic model, time reversibility is equivalent to respecting \emph{detailed balance}: for any two sequences  $\mathbf{a}$ and  $\mathbf{b}$ and any time $t$, one should have
+
+\begin{equation}
+	\label{eq:detailed_balance_def}
+	P(\mathbf{a})q(\mathbf{b}\vert \mathbf{a}, t) = P(\mathbf{b})q(\mathbf{a}\vert \mathbf{b}, t).
+\end{equation}
+
+We set out to design a simple autoregressive model that does not fulfill detail balance, showing that time reversibility is in general not fulfilled. 
+Consider a sequence of length $L=2$ with binary states $a_1, a_2 \in \{0, 1\}$. 
+Assume that the ``fitness landscape'' of this sequence is such that sequences $(0,0)$ and $(1,1)$ are functional, while $(0,1)$ and $(1,0)$ are not. 
+A corresponding sequence alignment would show the following distribution of sequences: 
+
+\begin{equation}
+\begin{split}
+	\label{eq:toy_irreversible_eq}
+	P(0,0) = P(1,1) = \frac{1}{2}(1 - \varepsilon) \quad\text{and}\quad P(0,1) = P(1,0) = \frac{\varepsilon}{2},
+\end{split}
+\end{equation}
+with $\varepsilon \ll 1$. 
+A well trained autoregressive model would consequently have the following properties: 
+
+\begin{equation}
+	\begin{split}
+	\label{eq:toy_irreversible_autoregressive_eq}
+		&p_1(0) = p_1(1) = \frac{1}{2},\\
+		&p_2(0 \vert 0) = p_2(1 \vert 1) = 1-\varepsilon \quad\text{and}\quad p_2(0 \vert 1) = p_2(1 \vert 0) = \varepsilon,
+	\end{split}
+\end{equation}
+which is the same distribution as in Eq.~\sref{eq:toy_irreversible_eq}. 
+
+We now consider the two sequences $\mathbf{a} = (1, 1)$ and $\mathbf{b} = (0, 1)$ to show that the model does not respect detailled balance. 
+Computing the two sides of Eq.~\sref{eq:detailed_balance_def} in this configuration, we find
+
+\begin{equation}
+\begin{split}
+	P(\mathbf{b})q(\mathbf{a}\vert \mathbf{b}, t) &\sim \mathcal{O}(\varepsilon),\\
+	P(\mathbf{a})q(\mathbf{b}\vert \mathbf{a}, t) &=  \frac{1-\varepsilon}{2}\cdot(1-e^{-t})\frac{1-\varepsilon}{2}\cdot\left( e^{-t} + (1-e^{-t}) \frac{\varepsilon}{2}\right)\\
+	& \sim \frac{(1-\varepsilon)^2}{4}e^{-t}(1-e^{-t})\\ 
+	&\sim \mathcal{O}(1).
+\end{split}
+\end{equation}
+The first expression is of order $\varepsilon$ since the probability that the process started in $\mathbf{b}$ is $P(\mathbf{b}) = \varepsilon/2$; even if $q(\mathbf{a}\vert \mathbf{b}, t)$ is a likely transition, the scenario $\mathbf{b} \rightarrow \mathbf{a}$ remains unlikely. 
+For the second expression however, things are different. 
+The right hand side is composed successively of $P(\mathbf{a}) = (1-\varepsilon)/2$, of $q_1(0 \vert 1, t) = (1-e^{-t})(1-\varepsilon)/2$, and of $q_2(1 \vert 1, b_{<2}=(0), t) = e^{-t} + (1-e^{-t}) \varepsilon/2$.
+This shows that the scenario $\mathbf{a} \rightarrow \mathbf{b}$ is more likely, and we can assume that $\mathbf{a}$ is the ancestor of $\mathbf{b}$. 
+
+Two things can now be discussed. 
+First, even though the model does not satisfy detailed balance, it is straightforward to show that it satisfies \emph{global balance} and thus that it has a well defined equilibrium distribution. 
+For instance, in the toy model above, the long term distribution of the propagator $q$ can be shown to be equal to the one in Eq.~\sref{eq:toy_irreversible_eq}. 
+Secondly, the cause of irreversibility here is not epistasis in itself, but rather the structure of the autoregressive probability distribution. 
+In our toy example, the model eagerly mutates the first residue without considering the second one, allowing a likely $\mathbf{a} \rightarrow \mathbf{b}$ transition. 
+In fact, it is perfectly possible to design dynamical epistatic models that are time reversible \cite{alvarez_vivofunctionalphenotypes_2024}. 
+Furthermore, irreversible models of evolution are not the most common but are still part of standard phylogenetic toolkits \cite{boussau_efficientlikelihoodcomputations_2006}. 
+
 
 % section autoregressive_evolution_model (end)
 
