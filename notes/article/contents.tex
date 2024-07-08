@@ -311,7 +311,7 @@ We again see a consistent improvement when using the autoregressive model over I
 \subsection{Results on experimental evolution data.}
 
 We take advantage of recent developments in directed evolution experiments to test our method in a controlled setting. 
-We use the data published in \cite{stiffler_proteinstructureexperimental_2020}: in this work, authors evolved the antibiotic resistant proteins $\beta$-lactamase PSE-1 and acetyltransferase AAC6 by submitting them to  cycles of mutagenesis and functional selection. 
+We use the data published in \cite{stiffler_proteinstructureexperimental_2020}: in this work, authors evolved the antibiotic resistant proteins $\beta$-lactamase PSE-1 and acetyltransferase AAC6 by submitting them to  cycles of mutagenesis and selection for function. 
 Starting from a wild-type protein, they obtained thousands of diverse functional sequences after the directed evolution. 
 An interesting result of this work is that it is possible to recover structural information about the wild-type from the set of evolved sequences. 
 
@@ -321,7 +321,7 @@ The phylogeny is not known, but given the large population size during the exper
 Since the reconstruction task is most interesting when using relatively varied sequences, we decide to use data for the PSE-1 wild-type where $20$ cycles of mutagenesis \& selection have been performed, resulting in a mean Hamming distance of $12\%$ to the wild-type. 
 
 Our ASR procedure is as follows. 
-We randomly pick $M$ amino acid sequences among the proteins evolved from PSE-1 and with $20$ cycles of mutagenesis \& selection, with $3 \leq M \leq 640$. 
+We randomly pick the amino acid sequences of $M$ proteins among the ones evolved from PSE-1 after $20$ cycles of mutagenesis \& selection, with $3 \leq M \leq 640$. 
 The total number of sequences at round $20$ of directed evolution is much larger, making it computationally hard to use all of them. 
 We then construct a star-like phylongeny and place the $M$ selected sequences at the leaves, and perform ASR using either IQ-TREE or our autoregressive method which we have trained on an alignment of PSE-1 homologs.
 We obtain the reconstructed amino acid sequence of the root, which we can then compare to the actual wild-type. 
