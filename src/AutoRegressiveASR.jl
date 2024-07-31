@@ -4,6 +4,7 @@ using AncestralSequenceReconstruction
 using ArDCA
 using BackwardCoalescent
 import BioSequenceMappings: AbstractAlignment, pairwise_hamming
+using BioSequenceMappings
 using Chain
 using CSV
 using Dates

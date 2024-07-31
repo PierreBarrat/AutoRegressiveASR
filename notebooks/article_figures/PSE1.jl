@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.42
+# v0.19.45
 
 using Markdown
 using InteractiveUtils
@@ -33,6 +33,15 @@ data = let
 	@load datadir("Stiffler/subalignments/Results/data.jld2") data_wcode
 	dropmissing(data_wcode)
 end;
+
+# ╔═╡ c9d1f293-11c0-459b-b48e-b78e21888b10
+wt_to_swissprot = let
+	dat = CSV.read(
+		datadir("Stiffler/subalignments/Results/list_muts.remap.tsv"), 
+		DataFrame
+	)
+	Dict(r.matteo_pierre => r.PSE1_swissprot for r in eachrow(dat))
+end
 
 # ╔═╡ 5910cb98-fc83-41aa-9c55-80732b395e19
 methods = (:cons, :iqtree, :arnet)
@@ -103,9 +112,6 @@ plt_H_v_M = let p = plot()
 	)
 end
 
-# ╔═╡ 3ecb35ad-bd8e-40ce-9454-d068ab14caec
-data_grouped
-
 # ╔═╡ 716347c5-93c3-43f2-b9b5-6696c17ea267
 md"# Errors per position"
 
@@ -135,7 +141,7 @@ error_positions, n_error_per_pos = let
 	error_per_pos = mapreduce(hcat, methods) do s
 		[get(err_pos[s], i, 0) for i in all_positions]
 	end
-	all_positions, error_per_pos
+	[wt_to_swissprot[x] for x in all_positions], error_per_pos
 end
 
 # ╔═╡ 7c9329b4-18b4-4c2d-bd95-e2fb1ad47336
@@ -180,6 +186,7 @@ end
 # ╠═6c2d97a1-144d-4744-9477-5dc524d66dde
 # ╠═2bab1daa-faeb-46aa-9b0a-67e4ad375242
 # ╠═4022bae7-dfe3-4685-a210-3f85e35bb1ec
+# ╠═c9d1f293-11c0-459b-b48e-b78e21888b10
 # ╠═5910cb98-fc83-41aa-9c55-80732b395e19
 # ╠═f369f07e-2db1-4c7d-962c-e59705b4d3fc
 # ╠═d4c9337c-bca9-44ed-93bf-1a8595053436
@@ -189,7 +196,6 @@ end
 # ╟─d49c24dc-1c23-40a1-9810-10f1506ffec1
 # ╠═d59c4ccf-b189-4de4-82cb-30fc119c9277
 # ╠═f67a63e3-6e1b-4755-8ea7-c56c5a76aa8a
-# ╠═3ecb35ad-bd8e-40ce-9454-d068ab14caec
 # ╟─716347c5-93c3-43f2-b9b5-6696c17ea267
 # ╠═91d05a7f-91b6-46d7-a04b-b76d0d0f3b55
 # ╠═ca81e407-2db5-49a1-9343-a6d633fe5176

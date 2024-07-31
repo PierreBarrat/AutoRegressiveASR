@@ -42,3 +42,12 @@ function ar_local_field(s, i, arnet)
     end
     return ArDCA.softmax(H)
 end
+
+
+function stifflerwt_to_pse1_uniprot(i::Integer)
+    dat = CSV.read(
+        datadir("Stiffler/subalignments/Results/list_muts.remap.tsv"),
+        DataFrame
+    )
+    return Dict(r.matteo_pierre => r.PSE1_swissprot for r in eachrow(dat))[i]
+end
