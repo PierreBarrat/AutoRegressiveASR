@@ -9,6 +9,7 @@ begin
 	using DrWatson
 	quickactivate(@__DIR__)
 
+	using AutoRegressiveASR
 	using ArDCA
 	using BioSequenceMappings
 	using Chain
@@ -18,6 +19,15 @@ begin
 	using JLD2
 	using StatsBase
 	using StatsPlots
+end
+
+# ╔═╡ 1993d146-a05c-489c-95e7-013a90f29841
+include(joinpath(homedir(), ".julia/config/plot_defaults.jl"))
+
+# ╔═╡ 6b496d3a-49a9-4755-9c41-a4736ef3cd3c
+let
+	plt_defaults = pubfig(22)
+	Plots.default(; plt_defaults...)
 end
 
 # ╔═╡ e75ab66b-3a32-488a-ba21-e6f17e4bf90e
@@ -111,13 +121,16 @@ alphabet = Alphabet(:aa)
 
 # ╔═╡ ac1ad2b3-33d9-40de-8f4f-570350ba8d9a
 dat_mut = let
-	df = DataFrame(pos=Int[], wt=Char[], mut=Char[], delta_loglk = Float64[])
+	df = DataFrame(
+		pos=Int[], pos_uniprot=Int[], wt=Char[], mut=Char[], delta_loglk=Float64[]
+	)
 	loglk_wt = ArDCA.loglikelihood(wt, arnet)
 	for (i, m) in zip(error_positions, mutations)
 		mut = copy(wt)
 		mut[i] = m[1]
 		r = Dict(
 			:pos => i,
+			:pos_uniprot => AutoRegressiveASR.stifflerwt_to_pse1_uniprot(i),
 			:wt => alphabet(wt[i]),
 			:mut => alphabet(m[1]),
 			:delta_loglk => ArDCA.loglikelihood(mut, arnet) - loglk_wt
@@ -127,8 +140,10 @@ dat_mut = let
 	df
 end
 
-# ╔═╡ 0744365a-2621-4bc8-92f1-5af3f7578ba4
-pwd()
+# ╔═╡ f2aecfc6-2262-4b0b-8c47-2f0c5d64b069
+CSV.write(
+	datadir("Stiffler/subalignments/Results/data_6_mutations.csv"), dat_mut
+)
 
 # ╔═╡ 46fae5dd-6dc2-41e9-969c-4c0d43b8f0de
 md"## DMS and observed mutations (Δlk)"
@@ -149,19 +164,21 @@ function dms(wt, arnet)
 	return X
 end
 
-# ╔═╡ 099a021a-b8f4-488e-8178-bc693b62ee98
-dms(wt, arnet)[:, 212]
-
-# ╔═╡ a8ed08b2-2a3b-46f4-b809-a819da1b52f2
-alphabet(18)
-
 # ╔═╡ bc96a636-59be-4441-bcfb-aae36cbe3a4f
 let p = plot()
+	mut_label(r) = r.wt * "$(r.pos_uniprot)" * r.mut
 	dms_vals = @chain reshape(dms(wt, arnet), 1, :) vec skipmissing collect
-	density!(dms_vals, label="")
+	density!(dms_vals, label="", line = (:black, :dashdot))
 	for r in eachrow(dat_mut)
-		vline!([r.delta_loglk], label=r.pos)
+		vline!([r.delta_loglk], label=mut_label(r))
 	end
+	plot!(
+		xlabel = "Δlog-likelihood",
+		title = "Estimated effect of mutation in the wild-type context"
+,	)
+	savefig(
+		projectdir("notes/article/figures/SI/ardca_dms_pse1.png")
+	)
 	p
 end
 
@@ -189,8 +206,16 @@ dms_C_to_S = let
 	end
 end
 
+# ╔═╡ 1ba69553-5d31-4971-aeeb-2ec3c7f814f7
+let p = plot()
+	density!(dms_C_to_S)
+	vline!([3.67902])
+end
+
 # ╔═╡ Cell order:
 # ╠═8001ce72-4f39-11ef-0e06-2d89322f54f0
+# ╠═1993d146-a05c-489c-95e7-013a90f29841
+# ╠═6b496d3a-49a9-4755-9c41-a4736ef3cd3c
 # ╠═e75ab66b-3a32-488a-ba21-e6f17e4bf90e
 # ╠═b9873f2a-c99c-4e6c-a2fc-221a09505020
 # ╠═de143533-ca60-4311-a5e1-778a619470aa
@@ -205,13 +230,12 @@ end
 # ╠═5ef98dc6-dddd-4eca-b66d-490cf8513db6
 # ╠═75be7478-a196-43c7-b735-03110a7205c0
 # ╠═ac1ad2b3-33d9-40de-8f4f-570350ba8d9a
-# ╠═0744365a-2621-4bc8-92f1-5af3f7578ba4
+# ╠═f2aecfc6-2262-4b0b-8c47-2f0c5d64b069
 # ╟─46fae5dd-6dc2-41e9-969c-4c0d43b8f0de
 # ╠═0b81c3d4-b351-4e54-ba0d-90296e9e26e6
-# ╠═099a021a-b8f4-488e-8178-bc693b62ee98
-# ╠═a8ed08b2-2a3b-46f4-b809-a819da1b52f2
 # ╠═bc96a636-59be-4441-bcfb-aae36cbe3a4f
 # ╠═6768c7bd-b56d-436c-9cea-d430313b0640
 # ╠═ef34f74c-b69e-42bc-b42c-69e8f3c78ed1
 # ╠═79d2e22f-54b5-4528-b575-9844b6c8f082
 # ╠═d60f41a8-6444-41bc-8ecc-7c0b2a985e2a
+# ╠═1ba69553-5d31-4971-aeeb-2ec3c7f814f7

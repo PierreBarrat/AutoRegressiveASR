@@ -335,8 +335,9 @@ For a higher $M$, IQ-TREE and the autoregressive method stabilize to a fixed num
 The consensus curiously reaches a minimum at intermediate $M$, a fact commented in the \SI, and saturates at a Hamming distance of $6$ when considering all sequences of the round $20$. 
 The reconstruction errors are overwhelmingly located at six sequence positions. 
 In the central panel, the fraction of mistakes made at these six positions over the $100$ repetitions of $M=640$ leaves is shown for each method. 
-We observe that there are two positions (129 and 152) where IQ-TREE systematically fails at recovering the wild-type state while the autoregressive model's reconstruction is correct. 
-Inversely, IQ-TREE recovers the wild-type state more often at position 68. 
+We observe that there are two positions (169 and 193) where IQ-TREE systematically fails at recovering the wild-type state while the autoregressive model's reconstruction is correct. 
+Interestingly, the corresponding mutations are considered beneficial by the ArDCA model, see Figure~\sref{fig:stiffler_ardca_dms}. 
+Inversely, IQ-TREE recovers the wild-type state more often at position 107. 
 The right panel shows the logo of the set of reconstructed sequences at these 6 positions and for each method. 
 
 Overall, we see that the reconstruction of the autoregressive model is more accurate. 

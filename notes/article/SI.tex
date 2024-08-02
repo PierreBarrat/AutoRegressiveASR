@@ -165,6 +165,16 @@ Furthermore, irreversible models of evolution are not the most common but are st
 
 % section autoregressive_evolution_model (end)
 
+\section{Directed evolution data} % (fold)
+\label{sec:directed_evolution_data}
+
+\subsection{Minimum reconstruction error of the consensus} % (fold)
+\label{sub:minimum_reconstruction_error_of_the_consensus}
+
+% subsection minimum_reconstruction_error_of_the_consensus (end)
+
+% section directed_evolution_data (end)
+
 \section{Supplementary figures} % (fold)
 \label{sec:supplementary_figures}
 
@@ -194,4 +204,16 @@ Furthermore, irreversible models of evolution are not the most common but are st
 	\label{sfig:depth_distribution_coalescent}
 \end{figure}
 
+\begin{figure}
+	\centering
+	\includegraphics[width=.75\textwidth]{figures/SI/ardca_dms_pse1.png}
+	\caption{
+		Distribution of estimated effect of single mutations by ArDCA in the PSE1 sequence (black curve). 
+		The effect of a mutations is estimated by computing the difference in log-likelihood between the mutant sequence and the wild-type: negative values are detrimental and $0$ represents a neutral mutation.
+		As expected, most mutations are estimated to be detrimental but mutations found in the consensus of round 20 are mostly beneficial or neutral. 
+		The six reconstruction errors in Figure~\ref{fig:stiffler} are displayed as vertical bars. 
+		The two positions $169$ and $193$ where ArDCA outperforms IQ-TREE correspond to beneficial mutations.  
+	}
+	\label{sfig:stiffler_ardca_dms}
+\end{figure}
 % section supplementary_figures (end)
