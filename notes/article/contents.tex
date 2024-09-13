@@ -370,18 +370,21 @@ This simplification limits their ability to accurately capture the full complexi
 
 In this study, we addressed this limitation by developing a novel generative model based on the ArDCA autoregressive framework, which explicitly accounts for epistasis, an essential factor in protein evolution. 
 By incorporating the dependencies between amino acids within sequences, our model offers a more realistic description of protein evolution, capturing the non-independence of mutations over time.
-
 A significant contributions of this work is extending the application of generative models to cope with phylogenetic constraints. 
 Our model not only preserves the generative capacity over long-term evolution but also enables the use of classical phylogenetic techniques such as Felsenstein’s pruning algorithm, which has been a key tool in traditional sequence evolution studies. 
 The ability to integrate a generative context-aware models into these established algorithms represents a substantial advance, allowing for more accurate inference of evolutionary relationships and ancestral states. 
-The generative nature of our model allows for sampling of artificial sequences that in principle remain functional, despite being distant from any naturally occurring proteins. 
 This, besides the theoretical interest in ASR, is a powerful tool to help us understanding how phylogenetic constraints impact the structure and/or the function of the protein of interest. 
-Moreover, the generative algorithm we designed, allows us to go beyond the maximum-likelihood paradigm on which most ASR computational strategies are based on, giving us access to the full posterior distribution of sequences at each internal node. 
 
 Our evaluation of the model using simulated data demonstrated that it outperforms IQ-TREE, a state-of-the-art tool for ASR, in reconstructing ancestral sequences. 
 This improvement highlights the importance of incorporating epistasis into evolutionary models, as ignoring these interactions likely leads to less accurate reconstructions. 
 Furthermore, we validated our approach using experimental data from directed evolution experiments. 
 These data offer a unique opportunity to test the accuracy of ASR methods, and our model achieved more accurate reconstructions of known ancestors compared to IQ-TREE, underscoring the robustness of our approach.
+
+Using the generative nature of our model we can perform Bayesian sampling of sequences at internal nodes that should in principle remain functional despite being distant from any naturally occuring protein.
+Most ASR studies have used maximum likelihood reconstructions, as Bayesian ones are often found to accumulate to many deleterious mutations and can be non-functional. 
+At the same time, the maximum likelihood solution can be biased and may be unrepresentative of the phenotype of the real ancestor, leading to incorrect biological conclusions \cite{williams_assessingaccuracyancestral_2006,wheeler_thermostabilityspecificityancient_2016}. 
+We ourselves observe these biases in our simulations, in the form of a convergence to the consensus sequence and an unnaturaly high likelihood according to the generative model. 
+Being able to propose an ensemble of sequences sampled from a generative model at each internal node could thus lead to more robust biological conclusions about ancestral life. 
 
 Another feature of our model is its ability to deal with gaps in the multiple sequence alignments in a more principled way compared to other competing algorithms that consider them as missing data. 
 Indeed, in our autoregressive approach gaps are treated as an additional amino acid, and our generative model will produce ancestral sequences that can contain gaps.
