@@ -171,6 +171,54 @@ Furthermore, irreversible models of evolution are not the most common but are st
 \subsection{Minimum reconstruction error of the consensus} % (fold)
 \label{sub:minimum_reconstruction_error_of_the_consensus}
 
+In the left panel of Figure~\ref{fig:stiffler}, the Hamming distance of the consensus of $M$ sequences to the wild-type sequence shows a minimum for an intermediate value of $M$. 
+This is at first counter-intuitive, and we present here a minimalistic example to illustrate this phenomenon. 
+
+We consider the simplified case of a star-like tree with $M$ leaves. 
+The root sequence is $\mathbf{y}=(y_1,\ldots,y_L)$ with $y_i=0$, and the sequence of leaf $m$ is $\mathbf{x}^m = (x_1,\ldots,x_L)$ with $x_i \in \{0, 1\}$. 
+We now assume that during evolution, the first site has mutated with probability $p = 1/2 + \varepsilon$ while the remaining $L-1$ have mutated with probability $q = \varepsilon$, with $\varepsilon < 1/2$. 
+For site $1$ (resp. for the remaining sites), the probability that the consensus of the leaves differs from the root is equal to the probability that a binomial variable of parameters $(p, M)$ (resp. $(q, M)$) takes a value larger than $M/2$. 
+We call $\alpha_p(M)$ (resp. $\alpha_q(M)$) this probability. 
+It is immediate that the average Hamming distance $H(M)$ between the consensus and the root if there are $M$ leaves is 
+
+$$ \langle H(M) \rangle = (L-1)\alpha_q(M) + \alpha_p(M). $$
+
+The limits of $\alpha$ for large and small $M$ are easily obtained: 
+
+$$ 
+\alpha_p(M=1) = p 
+\quad \text{and} \quad 
+\alpha_p(M\rightarrow\infty) = \begin{cases} 
+	1 \;\;\text{if}\; p > \frac{1}{2}\\
+	0 \;\;\text{if}\; p < \frac{1}{2}
+\end{cases}
+$$
+
+We therefore obtain the limits of $\langle H(M) \rangle$: 
+
+$$ \langle H(M=0) \rangle = L \varepsilon + \frac{1}{2} 
+\quad\text{and}\quad 
+\langle H(M\rightarrow \infty) \rangle = 1.
+$$
+
+It is interesting to note that depending on $\varepsilon$ and $L$, the consensus of $M=1$ sequence can be on average closer to the ancestral sequence than the consensus of a very large number of sequences. 
+Unfortunately, there are no convenient analytical expressions for $\alpha_q$ and $\alpha_p$ for intermediate $M$. 
+In Figure~\sref{sfig:hamming_consensus_minimum}, we show the numerical values of these two quantities for a specific choice of $\varepsilon$: $\alpha_p$ increases monotonically since $p > 1/2$, while $\alpha_q$ decreases since $q < 1/2$. 
+The average Hamming distance $\langle H(M) \rangle$ is then observed to have a minimum for an intermediate $M$. 
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=.75\textwidth]{figures/SI/hamming_consensus_minimum.png}
+	\caption{
+		Quantities $\alpha_p$, $\alpha_q$ and $\langle H \rangle$ as a function of the number of leaves $M$ (odd values only). 
+		$\alpha_p$ is increasing from $1/2+\varepsilon$ to $1$ while $\alpha_q$ is decreasing from $\varepsilon$ to $0$. 
+		The average Hamming distance $(L-1)\alpha_q(M) + \alpha_p(M)$ reaches a minimum for an intermediate number of leaves. 
+		Values of parameters: $\varepsilon = 0.05$, $L=10$. 
+	}
+	\label{sfig:hamming_consensus_minimum}
+\end{figure}
+
+
 % subsection minimum_reconstruction_error_of_the_consensus (end)
 
 % section directed_evolution_data (end)
