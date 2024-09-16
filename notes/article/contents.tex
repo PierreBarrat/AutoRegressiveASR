@@ -205,7 +205,7 @@ Hence, any evolver model used in our simulations should reproduce at long times 
 For this reason, we only consider the two evolvers above and do not use more traditional evolutionary models such as an arbitrary GTR on amino-acids \cite{rambaut_seqgenapplicationmonte_1997}. 
 
 For reconstruction, we compare our autoregressive approach to the commonly used IQ-TREE program  \cite{minh_iqtreenewmodels_2020}.
-When supplied with a protein sequence alignment and a tree, IQ-TREE infers a joint substitution rate matrix for all sequence positions, with rates that can differ accross positions. 
+When supplied with a protein sequence alignment and a tree, IQ-TREE infers a joint substitution rate matrix for all sequence positions, with rates that can differ across positions. 
 Both methods run on a fixed tree topology, with branch lengths being re-inferred using maximum likelihood (see Methods). \\
 
 \begin{figure}
@@ -343,7 +343,7 @@ The right panel shows the logo of the set of reconstructed sequences at these 6 
 Overall, we see that the reconstruction of the autoregressive model is more accurate. 
 This gain in accuracy comes from the representation of the functional constraints acting on the PSE-1 protein by the generative model, which are inferred separately using an alignment of homologs.  
 The improvement in reconstruction errors is modest, going from an average Hamming distance of $4.3$ to $2.9$. 
-However, the gain is intrisically limited by the data itself: the evolved sequences have an average Hamming distance of about $12\%$ to the ancestor, which is experimentally challenging but remains small compared to the divergence found in the homologs of PSE-1. 
+However, the gain is intrinsically limited by the data itself: the evolved sequences have an average Hamming distance of about $12\%$ to the ancestor, which is experimentally challenging but remains small compared to the divergence found in the homologs of PSE-1. 
 For instance, the root-to-tip distance estimated by IQ-TREE and the autoregressive model are respectively $0.13$ and $0.15$, corresponding to the regime of shallow trees when comparing with \figref{fig:hamming_real_arnet}.
 
 
@@ -371,7 +371,7 @@ This simplification limits their ability to accurately capture the full complexi
 In this study, we addressed this limitation by developing a novel generative model based on the ArDCA autoregressive framework, which explicitly accounts for epistasis, an essential factor in protein evolution. 
 By incorporating the dependencies between amino acids within sequences, our model offers a more realistic description of protein evolution, capturing the non-independence of mutations over time.
 A significant contributions of this work is extending the application of generative models to cope with phylogenetic constraints. 
-Our model not only preserves the generative capacity over long-term evolution but also enables the use of classical phylogenetic techniques such as Felsenstein’s pruning algorithm, which has been a key tool in traditional sequence evolution studies. 
+Our model not only preserves the generative capacity over long-term evolution but it also enables the use of classical phylogenetic techniques such as Felsenstein’s pruning algorithm, which has been a key tool in traditional sequence evolution studies. 
 The ability to integrate a generative context-aware models into these established algorithms represents a substantial advance, allowing for more accurate inference of evolutionary relationships and ancestral states. 
 This, besides the theoretical interest in ASR, is a powerful tool to help us understanding how phylogenetic constraints impact the structure and/or the function of the protein of interest. 
 
@@ -380,10 +380,10 @@ This improvement highlights the importance of incorporating epistasis into evolu
 Furthermore, we validated our approach using experimental data from directed evolution experiments. 
 These data offer a unique opportunity to test the accuracy of ASR methods, and our model achieved more accurate reconstructions of known ancestors compared to IQ-TREE, underscoring the robustness of our approach.
 
-Using the generative nature of our model we can perform Bayesian sampling of sequences at internal nodes that should in principle remain functional despite being distant from any naturally occuring protein.
+Using the generative nature of our model we can perform Bayesian sampling of sequences at internal nodes that should in principle remain functional despite being distant from any naturally occurring protein.
 Most ASR studies have used maximum likelihood reconstructions, as Bayesian ones are often found to accumulate to many deleterious mutations and can be non-functional. 
 At the same time, the maximum likelihood solution can be biased and may be unrepresentative of the phenotype of the real ancestor, leading to incorrect biological conclusions \cite{williams_assessingaccuracyancestral_2006,wheeler_thermostabilityspecificityancient_2016}. 
-We ourselves observe these biases in our simulations, in the form of a convergence to the consensus sequence and an unnaturaly high likelihood according to the generative model. 
+We ourselves observe these biases in our simulations, in the form of a convergence to the consensus sequence and an unnaturally high likelihood according to the generative model. 
 Being able to propose an ensemble of sequences sampled from a generative model at each internal node could thus lead to more robust biological conclusions about ancestral life. 
 
 Another feature of our model is its ability to deal with gaps in the multiple sequence alignments in a more principled way compared to other competing algorithms that consider them as missing data. 
@@ -459,19 +459,19 @@ Beta-lactamase is an enzyme produced by bacteria that provides them with resista
 In \cite{stiffler_proteinstructureexperimental_2020} the Wild Type (WT) sequence, 266 aminoacids long, has undergone 20 rounds of controlled evolution with an average target mutation rate of approximately 3\%-4\% per round, and the selected feature is their antibiotic resistance in E.Coli in the presence of ampicillin, slightly above the minimal inhibitory concentration. In these conditions, the percentage of bacterial population that survived selection is approximately 1\% (approx. $5 \times 10^4$ cells).
 At round 20, the last one of the experiment, the library of mutated variants has accumulated an average Hamming distance from WT of 12.9\% and an average pairwise distance of 19.8\%.
 
-A family of 42k homologous sequences is avalible from PFAM with code PF13354.
+A family of 42k homologous sequences is available from PFAM with code PF13354.
 For this family, an Hidden Markov Model (HMM) of length 214, built on 66 seed sequences, is contextually available.
-We aligned the experimental sequences to the family HMM according to the follwing procedure:
+We aligned the experimental sequences to the family HMM according to the following procedure:
 \begin{enumerate}
 	\item The WT sequence has been aligned according to the HMM using HMMER.
 	\item The insertion sites has been removed from the aligned WT sequence.
-	\item The corresponding insertion sites has been removed from all the other sequences from the experimentl library.
+	\item The corresponding insertion sites has been removed from all the other sequences from the experimental library.
 	\item Gap sites in the aligned WT sequence has been inserted to all the other experimental sequences.
 \end{enumerate}
 This method ensures that all the aligned positions correspond to the same one for all tested sequences. We remark that in doing this we make the reasonable assumption that all the experimental sequences are aligned to the HMM in same way the WT is aligned to the HMM.
 
 It has been noticed in \cite{bisardi_modelingsequencespaceexploration_2021} that taking into account the transition possibilities between amino acids allowed by the genetic code is important when describing short term evolutionary dynamics with generative models. 
-In our framework, a natural way to include these is by using the symetric matrix $\mathbf{H}$ in the decomposition of \eqref{eq:Q_decomposition}. 
+In our framework, a natural way to include these is by using the symmetric matrix $\mathbf{H}$ in the decomposition of \eqref{eq:Q_decomposition}. 
 Terms of the $\mathbf{H}$ matrix do not affect the equilibrium distribution of the model, which thus remains generative, but influences the short term dynamics. 
 Here, we simply counted the number of possibilities to transition from any amino acid to any other based on the genetic code, and we constructed the corresponding $\mathbf{H}$ matrix. 
 The diagonal matrix remains given by the equilibrium probabilities of amino acids in the context of the sequence, as given by \eqref{eq:autoregressive_site_propagator}.
@@ -498,4 +498,4 @@ The code used in this work is accessible at the following links:
 	\item the code used in simulations and data analysis is available at \url{https://github.com/PierreBarrat/AutoRegressiveASR}. 
 \end{itemize}
 
-\subsection*{Acknowledgements} We thank Juan Rodriguez-Rivas for useful discussions. 
+\subsection*{Acknowledgments} We thank Juan Rodriguez-Rivas for useful discussions. 
