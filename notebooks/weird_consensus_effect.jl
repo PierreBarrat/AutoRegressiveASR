@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.42
+# v0.19.46
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,18 @@ using InteractiveUtils
 # ╔═╡ 4414cf34-1cd5-11ef-3f0e-612eb6f94d99
 begin
 	using Distributions
+	using Measures
 	using Plots
 	using StatsBase
+end
+
+# ╔═╡ 6b4633a8-7b72-482c-a31c-4c1f90f12136
+include(joinpath(homedir(), ".julia/config/plot_defaults.jl"))
+
+# ╔═╡ 0d5b1491-5a33-483b-b72d-f42d3722d4bd
+begin
+	font_size = 20
+	Plots.default(; pubfig(font_size)...)
 end
 
 # ╔═╡ 45822f86-6fcd-43f2-9c76-ffcc4a91db85
@@ -61,15 +71,51 @@ H(M) = α(p, M) * (L-1) + α(p1, M)
 # ╔═╡ c89ce415-0fd5-4c39-9f20-443422f13115
 scatter(Mvals, H.(Mvals))
 
+# ╔═╡ 150cbf28-3034-4c62-b71a-ce1e81c25a44
+let p = plot()
+	ε = 0.05
+	L = 10
+	
+	Mvals = 1:2:50
+	α = map(Mvals) do M
+		d = Binomial(M, ε)
+		1 - cdf(d, M/2)
+	end
+	β = map(Mvals) do M
+		d = Binomial(M, 1/2 + ε)
+		1 - cdf(d, (M-.01)/2)
+	end
+
+	plot!(Mvals, α, label = "α_q")
+	plot!(Mvals, β, label = "α_p")
+	plot!(Mvals, ((L-1)*α + β), label="H(M)")
+	
+	plot!(
+		legend = :right,
+		xlabel = "M",
+		frame = :box,
+		xscale = :log10,
+		ylim = (-0.025, 1.025),
+		size = (800,600),
+		dpi=200,
+	)
+
+	savefig("../notes/article/figures/SI/hamming_consensus_minimum.png")
+
+	p
+end
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 Distributions = "~0.25.108"
+Measures = "~0.3.2"
 Plots = "~1.40.4"
 StatsBase = "~0.34.3"
 """
@@ -78,9 +124,9 @@ StatsBase = "~0.34.3"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.5"
 manifest_format = "2.0"
-project_hash = "732d383d871bc105d800d8b7d5ee345af9f357fb"
+project_hash = "0f0be8dc00d4fcec49a393257d90f4f0cb867569"
 
 [[deps.AliasTables]]
 deps = ["PtrArrays", "Random"]
@@ -1175,7 +1221,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.11.0+0"
 
 [[deps.libevdev_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1244,6 +1290,8 @@ version = "1.4.1+1"
 
 # ╔═╡ Cell order:
 # ╠═4414cf34-1cd5-11ef-3f0e-612eb6f94d99
+# ╠═6b4633a8-7b72-482c-a31c-4c1f90f12136
+# ╠═0d5b1491-5a33-483b-b72d-f42d3722d4bd
 # ╠═45822f86-6fcd-43f2-9c76-ffcc4a91db85
 # ╠═de8485ad-e9b9-4800-bbbe-386e6f91dcd6
 # ╠═efe72d92-f2e7-43da-b378-d4ffcfd0cd3b
@@ -1255,5 +1303,6 @@ version = "1.4.1+1"
 # ╠═705f8020-7635-4474-adf9-36d70b35dfd2
 # ╠═84fa2e7b-a20f-46f4-9099-a449af3235b0
 # ╠═c89ce415-0fd5-4c39-9f20-443422f13115
+# ╠═150cbf28-3034-4c62-b71a-ce1e81c25a44
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
