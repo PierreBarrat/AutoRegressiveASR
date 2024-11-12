@@ -1,3 +1,6 @@
+#======================================================#
+################### Folders and such ###################
+#======================================================#
 """
     get_tree_folders(dir)
 
@@ -9,6 +12,71 @@ function get_tree_folders(dir)
         isnothing(x) ? false : true
     end
 end
+#=
+Input could be something like ["iqtree", "autoregressive"]. Theses names are used for Regex
+This would find all folders of the type "iqtree-model", "autoregressive" in `folder/data/i`
+=#
+function real_strategy_names(folder, strategies::AbstractVector{<:AbstractString})
+    if !occursin(r"/data$", folder)
+        throw(ArgumentError("Expected a data folder with subfolders 1, 2 ... Instead $folder"))
+    end
+
+    dirs = map(ASRU.get_tree_folders(folder)) do f
+        @chain f readdir(; join=true) filter(isdir, _) map(basename, _)
+    end
+    dirs = @chain dirs Iterators.flatten unique
+
+    new_strategies = map(strategies) do strat
+        S = []
+        for dir in dirs
+            # if dir matches strat, make it a strat
+            if occursin(Regex(strat), dir) && !occursin("diversity", dir)
+                push!(S, dir)
+            end
+        end
+        S
+    end
+    new_strategies = @chain new_strategies begin
+        Iterators.flatten
+        collect
+        sort
+    end
+    return new_strategies
+end
+
+function real_strategy_names(folder, strategies::AbstractVector{Tuple{String,String}})
+    if !occursin(r"/data$", folder)
+        throw(ArgumentError("Expected a data folder with subfolders 1, 2 ... Instead $folder"))
+    end
+
+    dirs = map(ASRU.get_tree_folders(folder)) do f
+        @chain f readdir(; join=true) filter(isdir, _) map(basename, _)
+    end
+    dirs = @chain dirs Iterators.flatten unique
+
+    new_strategies = map(strategies) do strat
+        name, variant = strat # like iqtree, Bayes
+        S = []
+        for dir in dirs
+            # if dir matches strat[1], make it a strat
+            if occursin(Regex(name), dir) && !occursin("diversity", dir)
+                push!(S, (dir, variant))
+            end
+        end
+        S
+    end
+    new_strategies = @chain new_strategies begin
+        Iterators.flatten
+        collect
+        sort
+    end
+    return new_strategies
+end
+
+
+#===========================#
+########## Hamming ##########
+#===========================#
 
 function hamming(X::AbstractString, Y::AbstractString; normalize=true, exclude_gaps = false)
     length(X) != length(Y) && error("""Length differ

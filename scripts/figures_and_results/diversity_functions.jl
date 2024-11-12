@@ -115,9 +115,10 @@ function diversity(folder::AbstractString, strat_folder, target_node::AbstractSt
     aln_consensus = DCATools.consensus(leaves_real)[1]
     ignore_columns = gapped_positions(leaves_real)
     # @info "Ignoring columns $ignore_columns"
-
     internals_real = read_msa(joinpath(folder, "alignment_internals.fasta"))
     tarseq_real = internals_real[target_node]
+
+    out_data = Dict()
 
     # ArDCA reconstruction (alignment + table with likelihood of reconstructed sequences)
     recseq_ardca = read_msa(
@@ -130,35 +131,40 @@ function diversity(folder::AbstractString, strat_folder, target_node::AbstractSt
         joinpath(folder, strat_folder, "asr_table_$(target_node).csv"),
     ) |> DataFrame
 
-    # IQtree reconstruction: table with profile model at node of interest
-    iqtree_profile = @chain begin
-        joinpath(folder, "iqtree/IQTREE.state")
-        ASRU.parse_iqtree_state_file
-        getindex(_, target_node)
-        getproperty(_, :model)
-    end
-
-    ref_seqs_iqtree = Dict(
-        "ml" => ml_from_profile(iqtree_profile),
-        "aln_consensus" => aln_consensus,
-        "real" => tarseq_real,
-    )
     ref_seqs_ardca = Dict(
         "ml" => mlseq_ardca,
         "aln_consensus" => aln_consensus,
         "real" => tarseq_real,
     )
+    out_data["autoregressive"] = _measures(
+        recseq_ardca, table_ardca, ref_seqs_ardca; ignore_columns
+    )
 
-    M_ardca = _measures(recseq_ardca, table_ardca, ref_seqs_ardca; ignore_columns)
-    M_iqtree = _measures(iqtree_profile, ref_seqs_iqtree; ignore_columns)
+    # IQtree reconstruction: table with profile model at node of interest
+    iqtree_folders = filter(f -> occursin("iqtree", f), readdir(folder))
+    for iqf in iqtree_folders
+        iqtree_profile = @chain begin
+            joinpath(folder, iqf, "IQTREE.state")
+            ASRU.parse_iqtree_state_file
+            getindex(_, target_node)
+            getproperty(_, :model)
+        end
 
-    for M in (M_iqtree, M_ardca)
+        ref_seqs_iqtree = Dict(
+            "ml" => ml_from_profile(iqtree_profile),
+            "aln_consensus" => aln_consensus,
+            "real" => tarseq_real,
+        )
+        out_data[iqf] = _measures(iqtree_profile, ref_seqs_iqtree; ignore_columns)
+    end
+
+    for M in values(out_data)
         M["name"] = target_node
         M["depth"] = TreeTools.distance_to_closest_leaf(tree, target_node)
         M["folder"] = folder
     end
 
-    return DataFrame(M_ardca), DataFrame(M_iqtree)
+    return out_data
 end
 
 function _diversity(folder::AbstractString, strategy = "autoregressive_diversity/Bayes")
@@ -172,11 +178,20 @@ function _diversity(folder::AbstractString, strategy = "autoregressive_diversity
 
    tree = read_tree(joinpath(folder, "tree.nwk"))
 
+   # dat is a list of dictionaries
+   # dat[1]["autoregressive"] = Dict, dat[1]["iqtree-PMB+..."] = Dict ...
    dat = map(node -> diversity(folder, strategy, node, tree), nodes)
-   dat_asr = mapreduce(x -> x[1], vcat, dat)
-   dat_iqtree = mapreduce(x -> x[2], vcat, dat)
+   strategies = @chain map(keys, dat) Iterators.flatten collect unique
 
-   return (asr=dat_asr, iqtree=dat_iqtree)
+   out = Dict()
+   for strat in strategies
+       out[strat] = mapreduce(x -> DataFrame(x[strat]), vcat, dat)
+   end
+   return out
+
+   # dat_asr = mapreduce(x -> x[1], vcat, dat)
+   # dat_iqtree = mapreduce(x -> x[2], vcat, dat)
+   # return (asr=dat_asr, iqtree=dat_iqtree)
 end
 
 function diversity_data(basefolder::AbstractString, outfile::AbstractString = "diversity_data.jld2")
@@ -185,10 +200,16 @@ function diversity_data(basefolder::AbstractString, outfile::AbstractString = "d
         isdir(joinpath(f, strategy))
     end
 
-    df_tuples = map(f -> _diversity(f, strategy), folders)
+    df_dicts = map(f -> _diversity(f, strategy), folders)
+    strategies = @chain map(keys, df_dicts) Iterators.flatten collect unique
+
     data = Dict{String,Any}("timestamp" => now())
-    data["ardca"] = mapreduce(x -> x.asr, vcat, df_tuples)
-    data["iqtree"] = mapreduce(x -> x.iqtree, vcat, df_tuples)
+    data["diversity"] = Dict()
+    for strat in strategies
+        data["diversity"][strat] = mapreduce(x -> x[strat], vcat, df_dicts)
+    end
     @tag! data
+    # data["ardca"] = mapreduce(x -> x.asr, vcat, df_tuples)
+    # data["iqtree"] = mapreduce(x -> x.iqtree, vcat, df_tuples)
     return data
 end

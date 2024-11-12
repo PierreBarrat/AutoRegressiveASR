@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.41
+# v0.20.0
 
 using Markdown
 using InteractiveUtils
@@ -47,16 +47,13 @@ end
 # ╔═╡ 93396504-09f3-44a5-a23d-834784b41218
 plt_defaults = pubfig(20)
 
-# ╔═╡ 4d06f815-17e9-41cf-9a5a-2c88e917665d
-TOOLS = pluto_ingredients(scriptsdir(
-	"figures_and_results/branch_reconstruction.jl"
-))
-
 # ╔═╡ 94e3fc55-8a73-494d-8e5e-8f7aae8b554d
 fam_main = "PF00072"
 
 # ╔═╡ 8ed7f4ca-343f-45d5-8333-25ee836a81db
-savedir = projectdir("notes/article/figures/SI/")
+savedir = let
+	projectdir("notes/article/figures/SI/")
+end
 
 # ╔═╡ 7a763db5-9890-4c8d-b468-c93239a2aeb4
 fam_from_folder(folder) = split(basename(folder), "_")[1]
@@ -71,6 +68,11 @@ end
 
 # ╔═╡ 6331fa1c-6d4c-43e2-94bd-d755f9a85e82
 md"# Loading data"
+
+# ╔═╡ 4d06f815-17e9-41cf-9a5a-2c88e917665d
+TOOLS = pluto_ingredients(scriptsdir(
+	"figures_and_results/branch_reconstruction.jl"
+))
 
 # ╔═╡ 53b74403-c8b2-4bb0-9038-50ef587bc2bf
 folder_list = vcat(
@@ -104,10 +106,18 @@ simulation_parameters = JSON3.read(
 )
 
 # ╔═╡ baee935b-9491-40d2-92eb-a648a190d1eb
-strategies = collect(keys(branch_data))
+strategies = filter(collect(keys(pair_data))) do strat
+	!occursin(r"C\d\d", strat)
+end
+
+# ╔═╡ d494ab44-552f-46d3-98dd-b1d1dc6eb349
+iqtree_strat = @chain strategies begin
+	findfirst(x -> occursin("iqtree", x), _)
+	getindex(strategies, _)
+end
 
 # ╔═╡ 4a9f6f32-8ac5-43ee-8874-6a651546099f
-max_dist_real = maximum(pair_data["iqtree"].distance_real)
+max_dist_real = maximum(pair_data[iqtree_strat].distance_real)
 
 # ╔═╡ 6ecb98ae-d792-4307-8a63-d212eb4c24fe
 max_dist_inf = maximum(pair_data["autoregressive"].distance_inferred)
@@ -118,14 +128,17 @@ md"# Figures"
 # ╔═╡ bd983086-a0ae-4072-b191-b1fcd63ed4e7
 md"## Pairwise distance - Inferred vs real"
 
-# ╔═╡ 1bc4405a-3249-4886-92e9-913b9516f221
-names(pair_data["iqtree"])
-
 # ╔═╡ fc4dabcc-dfe7-411b-a485-2559ab136b5a
 _fs
 
 # ╔═╡ 9389795a-45fb-4ea5-b43d-c0599a6fe218
 md"## Pairwise distance - Cumulative distribution"
+
+# ╔═╡ 8675404c-7b65-4ae2-8f8b-4ad807fd9598
+fam_from_folder(folder_full)
+
+# ╔═╡ daff8e9a-86cd-4c47-a61c-7cde4f15bc7b
+savedir
 
 # ╔═╡ 6c407d72-2b03-4ae4-a95b-463fb438d711
 md"## Error vs depth"
@@ -191,13 +204,22 @@ end
 # ╔═╡ 825d2389-d53c-4d2c-8c87-e521f050c5e0
 begin
 	local pal = palette(:default)
-	strat_clr = Dict{Any,Any}(
-		"iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3]
+	_strat_clr = Dict{Any,Any}(
+		"iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3],
 	)
+	let i = 4
+		for strat in strategies
+			if !haskey(_strat_clr, strat)
+				_strat_clr[strat] = pal[i]
+				i += 1
+			end
+		end
+	end
+	strat_clr(strat) = get(_strat_clr, strat, pal[length(_strat_clr)+1])
 
 	function linestyle(strat)
 		lw = 4
-		return (lw, strat_clr[strat])
+		return (lw, strat_clr(strat))
 	end
 end
 
@@ -206,7 +228,7 @@ plt_dist_inf_v_real = let p = plot()
 	for strat in strategies
 		@df pair_data[strat] scatter!(
 			:distance_real, :distance_inferred;
-			label = "", marker = (3, .5, stroke(0), strat_clr[strat]),
+			label = strat, marker = (3, .5, stroke(0), strat_clr(strat)),
 		)
 	end
 	
@@ -220,12 +242,7 @@ plt_dist_inf_v_real = let p = plot()
 	if method_from_folder(folder_full) == "arnet"
 		plot!([0, max_dist_real], [0, max_dist_real], label="", line = (:black, :dash))
 	end
-	
-	# Linear fit on short distances
-	# L = Int(round(length(X) * f))
-	# linfit = fitlinear(X[1:L], Y[1:L])
-	# plot!(X, linfit.(X), line=(:black), label="")
-	
+
 	plot!(
 		xlabel = "real distance",
 		ylabel = "inferred distance",
@@ -236,8 +253,7 @@ end
 
 # ╔═╡ ab30475e-a052-4dc4-b316-42b33d2d2205
 plt_dist_cumulative = let p = plot()
-	dvals = range(0, max_dist_real * 1.2, length=1000)
-
+	dvals = range(0, max_dist_real * 1.2, length=1000)	
 	
 	for strat in strategies
 		cdf = ecdf(pair_data[strat].distance_inferred)
@@ -269,41 +285,41 @@ if fam_from_folder(folder_full) == fam_main
 		dpi = 300,
 	)
 
-	if method == "arnet"
-		savefig(p, joinpath(
-			savedir, "branch_length_reconstruction_$(method)_$(fam).png"
-		))
-	end
+	savefig(p, joinpath(
+		savedir, "branch_length_reconstruction_scalebranch_$(fam).png"
+	))
 end
 
 # ╔═╡ Cell order:
-# ╠═dea00e2e-8bea-4715-af4f-4b15ebeb792e
+# ╟─dea00e2e-8bea-4715-af4f-4b15ebeb792e
 # ╠═81bc7c34-f1c5-11ee-17a1-f1983df9cbad
 # ╠═ff4bc077-81bc-4dd7-80de-58ba09f4ff76
 # ╠═4158b556-77a3-443c-96ef-2b90bab9ec97
 # ╠═93396504-09f3-44a5-a23d-834784b41218
-# ╠═4d06f815-17e9-41cf-9a5a-2c88e917665d
 # ╠═94e3fc55-8a73-494d-8e5e-8f7aae8b554d
 # ╠═8ed7f4ca-343f-45d5-8333-25ee836a81db
 # ╠═7a763db5-9890-4c8d-b468-c93239a2aeb4
 # ╠═c9981050-3a9c-4cda-b1f3-145de001713e
 # ╟─6331fa1c-6d4c-43e2-94bd-d755f9a85e82
+# ╠═4d06f815-17e9-41cf-9a5a-2c88e917665d
 # ╠═53b74403-c8b2-4bb0-9038-50ef587bc2bf
 # ╠═67bf7432-fd4d-410d-bb70-6e8344d7572e
 # ╠═ecd42c56-6100-4a99-a044-011bc93245db
 # ╠═6413baf8-deea-46e5-b609-896f95f7e4e8
 # ╠═b93e7a60-9cbc-4f65-8083-ef58841ced47
 # ╠═baee935b-9491-40d2-92eb-a648a190d1eb
+# ╠═d494ab44-552f-46d3-98dd-b1d1dc6eb349
 # ╠═4a9f6f32-8ac5-43ee-8874-6a651546099f
 # ╠═6ecb98ae-d792-4307-8a63-d212eb4c24fe
 # ╟─b587e52b-5330-4ced-9a40-2cb39dac0ae4
 # ╟─bd983086-a0ae-4072-b191-b1fcd63ed4e7
-# ╠═1bc4405a-3249-4886-92e9-913b9516f221
 # ╠═fc4dabcc-dfe7-411b-a485-2559ab136b5a
 # ╠═26699dfd-04f5-40ce-a59d-142603b5c1fe
 # ╟─9389795a-45fb-4ea5-b43d-c0599a6fe218
 # ╠═ab30475e-a052-4dc4-b316-42b33d2d2205
 # ╠═9167990a-33ed-41d9-a0c4-e3c6dfedf872
+# ╠═8675404c-7b65-4ae2-8f8b-4ad807fd9598
+# ╠═daff8e9a-86cd-4c47-a61c-7cde4f15bc7b
 # ╟─6c407d72-2b03-4ae4-a95b-463fb438d711
 # ╠═439679e1-b121-4f82-a68e-a311af5280ee
 # ╠═2484add9-eb75-4a32-81e6-6a5ac68a6b39

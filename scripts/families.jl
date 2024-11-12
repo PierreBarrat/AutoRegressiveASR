@@ -12,7 +12,9 @@ families = Dict(
         "arnet" => datadir("Models", "PF00076/arnets/trained_on_potts/arnet_lJ0.01_lH0.001.jld2"),
         "sample_arnet_eq" => datadir("Models", "PF00076", "sample_arnet.fasta"),
         "aln_nat" => datadir("Models", "PF00076", "PF00076_mgap6.fasta"),
-        "arnet_on_nat" => datadir("Models", "PF00076", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2")
+        "arnet_on_nat" => datadir("Models", "PF00076", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2"),
+        "iqtree_model_ardca" => "PMB+R3",
+        "iqtree_model_potts" => "PMB+I+G4",
 
     ),
     "PF00072" => Dict(
@@ -24,7 +26,10 @@ families = Dict(
         "arnet" => datadir("Models", "PF00072/arnets/trained_on_potts/arnet_lJ0.01_lH0.001.jld2"),
         "sample_arnet_eq" => datadir("Models", "PF00072", "sample_arnet.fasta"),
         "aln_nat" => datadir("Models", "PF00072", "PF00072_mgap6_subsample.fasta"),
-        "arnet_on_nat" => datadir("Models", "PF00072", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2")
+        "aln_nat_small" => datadir("Models", "PF00072", "PF00072_mgap6_subsample_small.fasta"),
+        "arnet_on_nat" => datadir("Models", "PF00072", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2"),
+        "iqtree_model_ardca" => "PMB+I+G4",
+        "iqtree_model_potts" => "PMB+I+G4",
     ),
     "PF00014" => Dict(
         "prefix" => "PF00014",
@@ -35,7 +40,9 @@ families = Dict(
         "arnet" => datadir("Models", "PF00014/arnets/trained_on_potts/arnet_lJ0.01_lH0.001.jld2"),
         "sample_arnet_eq" => datadir("Models", "PF00014", "sample_arnet.fasta"),
         "aln_nat" => datadir("Models", "PF00014", "PF00014_mgap6.fasta"),
-        "arnet_on_nat" => datadir("Models", "PF00014", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2")
+        "arnet_on_nat" => datadir("Models", "PF00014", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2"),
+        "iqtree_model_ardca" => "PMB+R3",
+        "iqtree_model_potts" => "PMB+I+G4",
     ),
     "PF00595" => Dict(
         "prefix" => "PF00595",
@@ -46,6 +53,8 @@ families = Dict(
         "arnet" => datadir("Models", "PF00595/arnets/trained_on_potts/arnet_lJ0.01_lH0.001.jld2"),
         "sample_arnet_eq" => datadir("Models", "PF00595", "sample_arnet.fasta"),
         "aln_nat" => datadir("Models", "PF00595", "PF00595_mgap6.fasta"),
-        "arnet_on_nat" => datadir("Models", "PF00595", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2")
+        "arnet_on_nat" => datadir("Models", "PF00595", "arnets/trained_on_nat/arnet_lJ0.01_lH0.001.jld2"),
+        "iqtree_model_ardca" => "PMB+R3",
+        "iqtree_model_potts" => "PMB+R5",
     ),
 )

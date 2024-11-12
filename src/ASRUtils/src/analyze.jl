@@ -229,6 +229,12 @@ end
 function hamming_to_aln_consensus(data, label)
     hamming(data.alignment_consensus, data.reconstructed_sequences[label])
 end
+function hamming_to_aln_consensus_nogap(data, label)
+    hamming(
+        data.alignment_consensus, data.reconstructed_sequences[label];
+        exclude_gaps=true
+    )
+end
 
 function entropy(data, label)
     return if isnothing(data.asr_state_profiles)
@@ -263,6 +269,7 @@ MEASURES(generative_model) = Dict(
     :hamming_to_model_consensus => hamming_to_model_consensus,
     :hamming_to_model_ground_state => hamming_to_model_ground_state,
     :hamming_to_aln_consensus => hamming_to_aln_consensus,
+    :hamming_to_aln_consensus_nogap => hamming_to_aln_consensus_nogap,
     :entropy => entropy,
     :reconstructed_sequence => reconstructed_sequence,
     :proximity_to_leaves => proximity_to_leaves,
@@ -279,6 +286,7 @@ MEASURES(::DCAGraph) = Dict(
     :hamming_to_closest_leaf => hamming_to_closest_leaf,
     :hamming_to_root => hamming_to_root,
     :hamming_to_model_consensus => hamming_to_model_consensus,
+    :hamming_to_aln_consensus_nogap => hamming_to_aln_consensus_nogap,
     # :hamming_to_model_ground_state => hamming_to_model_ground_state,
     :hamming_to_aln_consensus => hamming_to_aln_consensus,
     :entropy => entropy,
@@ -299,6 +307,7 @@ MEASURES(::Nothing) = Dict(
     # :hamming_to_model_consensus => hamming_to_model_consensus,
     # :hamming_to_model_ground_state => hamming_to_model_ground_state,
     :hamming_to_aln_consensus => hamming_to_aln_consensus,
+    :hamming_to_aln_consensus_nogap => hamming_to_aln_consensus_nogap,
     :reconstructed_sequence => reconstructed_sequence,
     :proximity_to_leaves => proximity_to_leaves,
 )

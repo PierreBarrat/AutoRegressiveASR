@@ -19,8 +19,7 @@ function measure_branch_reconstruction(basefolder::AbstractString)
     data = Dict{String,Any}("timestamp" => now())
     data_folder = joinpath(basefolder, "data")
 
-    strategies = ["iqtree", "autoregressive"]
-
+    strategies = ASRU.real_strategy_names(data_folder, ["iqtree", "autoregressive"])
     # if potts used to simulate, measure real time in sweeps
     scale_factor = if occursin("potts", basefolder)
         fam = basefolder[findfirst(r"PF\d*", basefolder)]
@@ -31,17 +30,20 @@ function measure_branch_reconstruction(basefolder::AbstractString)
         1
     end
 
-
     data_tmp = map(ASRU.get_tree_folders(data_folder)) do repfol
-        node_data, pair_data = _measure_branch_reconstruction(repfol, strategies; scale_factor)
+        node_data, pair_data = _measure_branch_reconstruction(
+            repfol, strategies; scale_factor
+        )
     end # array of tuple of `Dict("iqtree" => df, "autoregressive" => df)`
-
-    data["nodes"] = Dict(
-        strat => mapreduce(X -> X[1][strat], vcat, data_tmp) for strat in strategies
-    )
-    data["pairs"] = Dict(
-        strat => mapreduce(X -> X[2][strat], vcat, data_tmp) for strat in strategies
-    )
+    data["nodes"] = Dict()
+    data["pairs"] = Dict()
+    for s in strategies
+        if !haskey(data_tmp[1][1], s)
+            continue
+        end
+        data["nodes"][s] = mapreduce(X -> X[1][s], vcat, data_tmp)
+        data["pairs"][s] = mapreduce(X -> X[2][s], vcat, data_tmp)
+    end
     @tag! data
     return data
 end
@@ -49,7 +51,13 @@ end
 
 function _measure_branch_reconstruction(folder::AbstractString, strategies; scale_factor=1)
     tree_real = read_tree(joinpath(folder, "tree.nwk"))
-    tree_inf = Dict(s => read_tree(joinpath(folder, s, "tree_inferred.nwk")) for s in strategies)
+    tree_inf = Dict()
+    for s in strategies
+        treefile = joinpath(folder, s, "tree_inferred.nwk")
+        if isfile(treefile)
+            tree_inf[s] = read_tree(treefile)
+        end
+    end
 
     pair_data = measures_pairs(tree_real, tree_inf; scale_factor)
     branch_data = measures_branches(tree_real, tree_inf; scale_factor)

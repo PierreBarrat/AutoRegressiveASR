@@ -1,3 +1,5 @@
+quickactivate(@__DIR__, "AutoRegressiveASR")
+
 using ArDCA
 using AutoRegressiveASR
 using CSV
@@ -10,64 +12,83 @@ using PlutoUI
 using StatsBase
 using StatsPlots
 
-DIV = pluto_ingredients(scriptsdir("figures_and_results/diversity_functions.jl"))
+includet(scriptsdir("figures_and_results/diversity_functions.jl"))
 
-function sem(ystd, N)
+function _sem(ystd, N)
     # error on mean calculated from sample standard deviation and number of samples
     # [-1.96, 196] has 95% of the mass for a normal distribution
     return 1.96 * ystd ./ sqrt.(N)
 end
 
-function diversity_plots(folder)
-
-
-    path_folder, data_folder, prefix = let
-        p, d = dirname(folder), basename(folder)
-        prefix = split(d, "_")[1]
-        p, d, prefix
-    end
-
-
-    data, filename = produce_or_load(
+function diversity_plots(folder; iqtree_strategy="base")
+    @info "Diversity plots for $folder"
+    dat, filename = produce_or_load(
        Dict("basefolder" => folder, "out" => "diversity_data.jld2");
        filename = x -> joinpath(x["basefolder"], x["out"]),
        suffix = "",
     ) do config
-       data = DIV.diversity_data(config["basefolder"], config["out"])
+       dat = diversity_data(config["basefolder"], config["out"])
     end
+    dat = dat["diversity"]
 
-    strategies = ["iqtree", "ardca"]
+    strategies = let
+        lt(x,y) = if length(x) == length(y)
+            x > y
+        else
+            length(x) > length(y)
+        end
+        function filter_iqtree(strat)
+            return if occursin("iqtree", strat)
+                if iqtree_strategy == "base"
+                    !occursin(r"C\d\d", strat)
+                else
+                    occursin(Regex(iqtree_strategy), strat) # select the wanted strategy
+                end
+            else
+                true
+            end
+        end
+        st = @chain dat keys collect sort(; lt) filter(filter_iqtree, _)
+    end
 
     begin
         # smoothing width
         w = 20
         outliers_right = 0.
         smoothing_alg = :hist
-        pal = palette(:default)
-        strat_color = Dict(strat => pal[i] for (i, strat) in enumerate(strategies))
     end
-
-    strat_label = Dict(
-        "iqtree" => "iqtree",
-        "ardca" => "autoregressive",
-    )
+    begin
+        is_iqtree(strat) = occursin("iqtree", strat)
+        is_autoregressive(strat) = strat == "autoregressive"
+    end
+    begin
+        pal = palette(:default)
+        strat_clr = Dict()
+        for strat in strategies
+            if is_iqtree(strat)
+                strat_clr[strat] = pal[1]
+            elseif is_autoregressive(strat)
+                strat_clr[strat] = pal[2]
+            end
+        end
+    end
 
     linestyle = let
         lw = 4
-        Dict(strat => (lw, strat_color[strat]) for strat in strategies)
+        Dict(strat => (lw, strat_clr[strat]) for strat in strategies)
     end
 
     # Figures
     selfhamming = let p = plot()
         for strat in strategies
             x, y, ystd, N = ASRU.easy_smooth(
-                data[strat], :depth, :av_self_hamming;
+                dat[strat], :depth, :av_self_hamming;
                 w, alg=smoothing_alg, outliers_right,
             )
-            yerr = sem(ystd, N)
+            yerr = _sem(ystd, N)
             plot!(
                 x, y, ribbon = yerr;
-                fillalpha = .2, label=strat_label[strat], line=linestyle[strat]
+                fillalpha = .2, label=strat, line=linestyle[strat], color=strat_clr[strat]
             )
         end
         plot!(
@@ -81,12 +102,12 @@ function diversity_plots(folder)
         p
     end
 
-    entropy = let p = plot()
+    plt_entropy = let p = plot()
         for strat in strategies
             x, y = ASRU.easy_smooth(
-                data[strat], :depth, :entropy; w, alg=smoothing_alg, outliers_right,
+                dat[strat], :depth, :entropy; w, alg=smoothing_alg, outliers_right,
             )
-            plot!(x, y, label=strat_label[strat], line=linestyle[strat])
+            plot!(x, y, label=strat, line=linestyle[strat], color=strat_clr[strat])
         end
         plot!(
             xlabel = "Node depth",
@@ -98,5 +119,5 @@ function diversity_plots(folder)
         p
     end
 
-    return (selfhamming = selfhamming, entropy = entropy)
+    return (selfhamming = selfhamming, entropy = plt_entropy)
 end

@@ -17,20 +17,19 @@ function sem(ystd, N)
     return 1.96 * ystd ./ sqrt.(N)
 end
 
-HAM = pluto_ingredients(
-    scriptsdir("figures_and_results/analyze_results_and_write_df.jl")
-)
+includet(scriptsdir("figures_and_results/analyze_results_and_write_df.jl"))
 
-function likelihood_and_hamming_consensus(folder)
-    # Setup
+function likelihood_and_hamming_consensus(folder; iqtree_strategy="base")
+    @info "Likelihood & hamming to consensus plots for $folder"
+
+    # Making or loading measures
     data_all, _ = produce_or_load(
         Dict("folder" => folder);
         filename = x -> joinpath(x["folder"], "measures_asr.jld2"), suffix="",
     ) do config
-        HAM.analyze_results_and_write(config["folder"])
+        analyze_results_and_write(config["folder"])
     end;
-
-    data = data_all["asr"];
+    dat = data_all["asr"];
 
     simulation_parameters = JSON3.read(
         joinpath(folder, "simulation_parameters.json"), Dict
@@ -56,14 +55,28 @@ function likelihood_and_hamming_consensus(folder)
     end
 
     strategies = let
-        st = collect(keys(data))
-
         lt(x,y) = if length(x) == length(y)
             x > y
         else
             length(x) > length(y)
         end
-        sort(st; lt)
+        function filter_iqtree(strat)
+            if length(strat) != 2
+                return true
+            end
+
+            name, _ = strat # iqtree-model / autoregressive
+            return if occursin("iqtree", name)
+                if iqtree_strategy == "base"
+                    !occursin(r"C\d\d", name)
+                else
+                    occursin(Regex(iqtree_strategy), name) # select the wanted strategy
+                end
+            else
+                true
+            end
+        end
+        st = @chain dat keys collect sort(; lt) filter(filter_iqtree, _)
     end
 
     begin
@@ -72,30 +85,40 @@ function likelihood_and_hamming_consensus(folder)
         outliers_right = 0.
         smoothing_alg = :hist
     end
+    begin
+        is_iqtree(strat) = occursin("iqtree", strat[1])
+        is_autoregressive(strat) = strat[1] == "autoregressive"
+        is_ml(strat) = length(strat) == 2 && (strat[2] == "ml" || strat[2] == "ML")
+        is_bayes(strat) = length(strat) == 2 && (strat[2] == "Bayes" || strat[2] == "bayes")
+    end
 
     begin
-        # plot style
         pal = palette(:default)
-        strat_clr = Dict{Any,Any}(
-            "iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3]
-        )
+        strat_clr = Dict()
         for strat in strategies
-            strat_clr[strat] = strat_clr[strat[1]]
+            if is_iqtree(strat)
+                strat_clr[strat] = pal[1]
+                strat_clr[strat[1]] = pal[1]
+            elseif is_autoregressive(strat)
+                strat_clr[strat] = pal[2]
+                strat_clr[strat[1]] = pal[2]
+            elseif strat[1] == "real"
+                strat_clr[strat] = pal[3]
+                strat_clr[strat[1]] = pal[3]
+            end
         end
     end
 
     begin
-        bayesian(strategies) = filter(x -> length(x)>1 && x[2]=="Bayes", strategies)
-        ml(strategies) = filter(strategies) do x
-            length(x) < 2 && return false
-            x[2] == "ML" || x[2] == "ml"
-        end
+        bayesian(strategies) = filter(is_bayes, strategies)
+        ml(strategies) = filter(is_ml, strategies)
         real(strategies) = filter(==(("real",)), strategies)
         reconstruction(strategies) = filter(!=(("real",)), strategies)
         strat_label(strat) = joinpath(strat...)
 
-        iqtree(strategies) = filter(x -> x[1]=="iqtree", strategies)
-        ar(strategies) = filter(x -> x[1]=="autoregressive", strategies)
+        iqtree(strategies) = filter(is_iqtree , strategies)
+        ar(strategies) = filter(is_autoregressive, strategies)
+
 
         function label_short(strat)
             length(strat) == 1 && return strat[1]
@@ -106,7 +129,7 @@ function likelihood_and_hamming_consensus(folder)
 
         function linestyle(strat)
             lw = 4
-            return if length(strat) > 1 && strat[2] == "Bayes"
+            return if is_bayes(strat)
                 (lw, :dash, strat_clr[strat[1]])
             else
                 (lw, strat_clr[strat[1]])
@@ -117,12 +140,11 @@ function likelihood_and_hamming_consensus(folder)
         end
     end
 
-
     # Plots
     likelihood_v_depth = let p = plot()
         for strat in vcat(ml(strategies), bayesian(strategies), real(strategies))
             x, y = ASRU.easy_smooth(
-                data[strat], :node_depth, :loglikelihood;
+                dat[strat], :node_depth, :loglikelihood;
                 w, alg=smoothing_alg, outliers_right,
             )
             plot!(x, y, label=label_short(strat), line=linestyle(strat))
@@ -167,7 +189,7 @@ function likelihood_and_hamming_consensus(folder)
     hamming_to_consensus = let p = plot()
         for strat in strategies
             x, y = ASRU.easy_smooth(
-                data[strat], :node_depth, :hamming_to_aln_consensus;
+                dat[strat], :node_depth, :hamming_to_aln_consensus_nogap;
                 w, alg=smoothing_alg, outliers_right,
             )
             plot!(x, y, label=label_short(strat), line=linestyle(strat))
@@ -180,7 +202,7 @@ function likelihood_and_hamming_consensus(folder)
             # xlim = (-0.025, 2.025),
             ylabel = "Hamming distance to consensus",
             frame = :box,
-            # legend = :bottomleft,
+            legend = :topright,
         )
 
         p

@@ -25,7 +25,7 @@ function simulate_data_ardca_yule(parsed_args::AbstractDict; force=false)
     nsim_per_tree = parsed_args["nsim_per_tree"]
 
     # Out folder
-    opt_bl = parsed_args["asr_opt_bl"]
+    opt_bl = parsed_args["opt_bl"]
     timestamp = now()
     reps = nsim_per_tree
     generative_model = arnet_file
@@ -37,7 +37,7 @@ function simulate_data_ardca_yule(parsed_args::AbstractDict; force=false)
     )
     @tag!(parameters)
     identifier = savename(
-        parsed_args["prefix"], parameters;
+        parsed_args["prefix"], parameters, parsed_args["suffix"];
         accesses = [:nleaves, :treeheight, :ntrees, :opt_bl],
         sort = true,
     )

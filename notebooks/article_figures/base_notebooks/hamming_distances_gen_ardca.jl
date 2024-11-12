@@ -1,17 +1,19 @@
 ### A Pluto.jl notebook ###
-# v0.19.41
+# v0.20.3
 
 using Markdown
 using InteractiveUtils
 
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
+    #! format: off
     quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
+    #! format: on
 end
 
 # ╔═╡ e3f4b0d4-f656-11ee-321f-d99da8673ea3
@@ -86,12 +88,32 @@ HAM = pluto_ingredients(
 	scriptsdir("figures_and_results/analyze_results_and_write_df.jl")
 )
 
+# ╔═╡ e5f9d5c6-449a-4b8b-b7a0-bcf7810cecbc
+wanted_strategies = [
+    ("iqtree", "ML"),
+    ("iqtree", "Bayes"),
+    ("autoregressive", "ML"),
+    ("autoregressive", "Bayes"),
+	# ("iqtree-PMB+I+G4+C10", "ML"),
+	# ("iqtree-PMB+I+G4+C10", "Bayes"),
+	# ("iqtree-PMB+I+G4+C60", "ML"),
+	# ("iqtree-PMB+I+G4+C60", "Bayes"),
+]
+
+# ╔═╡ d3b4ce3d-70e8-4c76-8b8d-615b97b90689
+folder_full
+
+# ╔═╡ b53af16a-8806-4e5a-aca1-9a7c47afcce8
+HAM.real_strategy_names(joinpath(folder_full, "data"), HAM.default_strategies)
+
 # ╔═╡ 715d6f56-365e-4d8f-bde8-4f02fd10d450
 data_all, _ = produce_or_load(
 	Dict("folder" => folder_full);
 	filename = x -> joinpath(x["folder"], "measures_asr.jld2"), suffix="",
 ) do config
-	HAM.analyze_results_and_write(config["folder"])
+	HAM.analyze_results_and_write(
+		config["folder"]; strategies = wanted_strategies
+	)
 end;
 
 # ╔═╡ bcbf1882-221f-42f5-a004-b0cc888ace72
@@ -123,17 +145,23 @@ model_consensus = let
 	DCATools.num_to_aa(cons[1], cons.mapping) # a string sequence
 end
 
+# ╔═╡ e432776e-dbc5-49c3-8a5f-f8f3ff3a5167
+
+
 # ╔═╡ 8e712428-e107-4f39-99d1-6b6fa2a08c66
 strategies = let
 	st = collect(keys(data))
-	
 	lt(x,y) = if length(x) == length(y)
 		x > y
 	else
 		length(x) > length(y)
 	end
 	sort(st; lt)
+	# intersect(st, wanted_strategies)
 end
+
+# ╔═╡ 197d4985-c055-4637-809a-c65f20b56a04
+strategies
 
 # ╔═╡ 4e683b40-217f-4670-897a-0cfe6dc6185e
 md"# Figures"
@@ -166,15 +194,22 @@ begin
 end
 
 # ╔═╡ 7df463a0-e072-4ec2-82c3-350460c01837
-begin
+strat_clr = let
 	# plot style
 	pal = palette(:default)
-	strat_clr = Dict{Any,Any}(
-		"iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3]
+	_strat_clr = Dict{Any,Any}(
+		"iqtree" => pal[1],
+		"autoregressive" => pal[2],
+		"real" => pal[3],
 	)
-	for strat in strategies
-		strat_clr[strat] = strat_clr[strat[1]]
+	let i = 4
+		for strat in strategies
+			_strat_clr[strat] = get(_strat_clr, strat[1], pal[i])
+			_strat_clr[strat[1]] = _strat_clr[strat]
+			i += 1
+		end
 	end
+	strat_clr(strat) = _strat_clr[strat]
 end
 
 # ╔═╡ 0daf2e97-bb2b-4e26-99a2-85e37071510e
@@ -190,7 +225,7 @@ begin
 
 	iqtree(strategies) = filter(x -> x[1]=="iqtree", strategies)
 	ar(strategies) = filter(x -> x[1]=="autoregressive", strategies)
-
+	
 	function label_short(strat)
 		length(strat) == 1 && return strat[1]
 		strat[2] == "Bayes" ? "" : strat[1]
@@ -201,13 +236,13 @@ begin
 	function linestyle(strat)
 		lw = 4
 		return if length(strat) > 1 && strat[2] == "Bayes"
-			(lw, :dash, strat_clr[strat[1]])
+			(lw, :dash, strat_clr(strat[1]))
 		else
-			(lw, strat_clr[strat[1]])
+			(lw, strat_clr(strat[1]))
 		end
 	end
 	function barstyle(strat)
-		(3, strat_clr[strat])
+		(3, strat_clr(strat))
 	end
 end
 
@@ -221,24 +256,24 @@ let p = plot()
 		yerr = sem(ystd, N)
 		plot!(
 			x, y; ribbon = yerr, fillalpha=.2, 
-			label=label_short(strat), line=linestyle(strat)
+			label=label_short(strat), line=linestyle(strat), color=strat_clr(strat)
 		)
 	end
 
 	# Difference
-	S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
-	D1 = sort(data[S1], :node_depth)
-	D2 = sort(data[S2], :node_depth)
-	X = D1.node_depth
-	Y = D1.hamming_to_real - D2.hamming_to_real # iqtree - AR
+	# S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
+	# D1 = sort(data[S1], :node_depth)
+	# D2 = sort(data[S2], :node_depth)
+	# X = D1.node_depth
+	# Y = D1.hamming_to_real - D2.hamming_to_real # iqtree - AR
 
-	x, y, ystd, N = ASRU.easy_smooth(
-		X, Y; w, alg=smoothing_alg, outliers_right, 
-	)
-	yerr = sem(ystd, N)
-	plot!(
-		x, y; ribbon = yerr, fillalpha=.2, label="improvement", color=:black
-	)
+	# x, y, ystd, N = ASRU.easy_smooth(
+	# 	X, Y; w, alg=smoothing_alg, outliers_right, 
+	# )
+	# yerr = sem(ystd, N)
+	# plot!(
+	# 	x, y; ribbon = yerr, fillalpha=.2, label="improvement", color=:black
+	# )
 
 	# 
 	plot!(
@@ -258,29 +293,29 @@ let p = plot()
 	for (i, strat) in enumerate(ml(strategies))
 		x, y, ystd, N = ASRU.easy_smooth(
             data[strat], :node_depth, :hamming_to_real_nogap; 
-			w, alg=smoothing_alg, outliers_right
+			w, alg=smoothing_alg, outliers_right, 
         )
 		yerr = sem(ystd, N)
 		plot!(
-			x, y; ribbon = yerr, fillalpha=.2, 
-			label=label_short(strat), line=linestyle(strat)
+			x, y; ribbon = yerr, fillalpha=.2,
+			label=label_short(strat), line=linestyle(strat), color=strat_clr(strat),
 		)
 	end
 
 	# Difference
-	S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
-	D1 = sort(data[S1], :node_depth)
-	D2 = sort(data[S2], :node_depth)
-	X = D1.node_depth
-	Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
+	# S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
+	# D1 = sort(data[S1], :node_depth)
+	# D2 = sort(data[S2], :node_depth)
+	# X = D1.node_depth
+	# Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
 
-	x, y, ystd, N = ASRU.easy_smooth(
-		X, Y; w, alg=smoothing_alg, outliers_right, 
-	)
-	yerr = sem(ystd, N)
-	plot!(
-		x, y; ribbon = yerr, fillalpha=.2, label="improvement", color=:black,
-	)
+	# x, y, ystd, N = ASRU.easy_smooth(
+	# 	X, Y; w, alg=smoothing_alg, outliers_right, 
+	# )
+	# yerr = sem(ystd, N)
+	# plot!(
+	# 	x, y; ribbon = yerr, fillalpha=.2, label="improvement", color=:black,
+	# )
 
 	# 
 	plot!(
@@ -300,49 +335,50 @@ let p = plot()
 	for (i, strat) in enumerate(reconstruction(strategies))
 		x, y, ystd, N = ASRU.easy_smooth(
             data[strat], :node_depth, :hamming_to_real_nogap; 
-			w, alg=smoothing_alg, outliers_right
+			w, alg=smoothing_alg, outliers_right, 
         )
+		color = strat_clr(strat)
 		if strat[2] == "Bayes"
 			yerr = sem(ystd, N)
 			plot!(
-				x, y; ribbon = yerr, fillalpha=.2, 
-				label=strat[1], color = strat_clr[strat]
+				x, y; #ribbon = yerr, fillalpha=.2, 
+				label=strat[1], color,
 			)
 		else
 			plot!(
-				x, y; label="", color = strat_clr[strat], line = (3, :dash)
+				x, y; label="", color, line = (3, :dash)
 			)
 		end
 	end
 
 	# Difference
-	S1, S2 = (("iqtree", "Bayes"), ("autoregressive", "Bayes"))
-	D1 = sort(data[S1], :node_depth)
-	D2 = sort(data[S2], :node_depth)
-	X = D1.node_depth
-	Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
+	# S1, S2 = (("iqtree", "Bayes"), ("autoregressive", "Bayes"))
+	# D1 = sort(data[S1], :node_depth)
+	# D2 = sort(data[S2], :node_depth)
+	# X = D1.node_depth
+	# Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
 
-	x, y, ystd, N = ASRU.easy_smooth(
-		X, Y; w, alg=smoothing_alg, outliers_right, 
-	)
-	yerr = sem(ystd, N)
-	plot!(
-		x, y; ribbon = yerr, fillalpha=.2, label="improvement", color=:black
-	)
+	# x, y, ystd, N = ASRU.easy_smooth(
+	# 	X, Y; w, alg=smoothing_alg, outliers_right, 
+	# )
+	# yerr = sem(ystd, N)
+	# plot!(
+	# 	x, y; ribbon = yerr, fillalpha=.2, label="improvement", color=:black
+	# )
 
 	# Difference ML for ref
-	S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
-	D1 = sort(data[S1], :node_depth)
-	D2 = sort(data[S2], :node_depth)
-	X = D1.node_depth
-	Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
+	# S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
+	# D1 = sort(data[S1], :node_depth)
+	# D2 = sort(data[S2], :node_depth)
+	# X = D1.node_depth
+	# Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
 
-	x, y, ystd, N = ASRU.easy_smooth(
-		X, Y; w, alg=smoothing_alg, outliers_right, 
-	)
-	plot!(
-		x, y; label="", line = (:black, :dash, 3)
-	)
+	# x, y, ystd, N = ASRU.easy_smooth(
+	# 	X, Y; w, alg=smoothing_alg, outliers_right, 
+	# )
+	# plot!(
+	# 	x, y; label="", line = (:black, :dash, 3)
+	# )
 
 	# 
 	plot!(
@@ -372,19 +408,24 @@ end
 # ╟─17693eba-9a67-4483-90f6-7b0932726765
 # ╠═04dd0c96-4e78-4e9b-aa93-53aa6eb676b2
 # ╠═87238856-61b3-42cb-ad07-e6248f79a3c5
+# ╠═e5f9d5c6-449a-4b8b-b7a0-bcf7810cecbc
+# ╠═d3b4ce3d-70e8-4c76-8b8d-615b97b90689
+# ╠═b53af16a-8806-4e5a-aca1-9a7c47afcce8
 # ╠═715d6f56-365e-4d8f-bde8-4f02fd10d450
+# ╠═197d4985-c055-4637-809a-c65f20b56a04
 # ╠═bcbf1882-221f-42f5-a004-b0cc888ace72
 # ╠═3e7bbd89-f2b8-4cc7-9474-011b2035e38a
 # ╠═78a77a70-3e2e-4234-b149-2d6506d42ae5
 # ╠═958ae778-ec6d-4930-b29c-c943cc3ded78
+# ╠═e432776e-dbc5-49c3-8a5f-f8f3ff3a5167
 # ╠═8e712428-e107-4f39-99d1-6b6fa2a08c66
 # ╟─4e683b40-217f-4670-897a-0cfe6dc6185e
 # ╟─6c8c0fc2-b6d1-4fbf-b5b4-5bf8a898a0cf
 # ╟─9de682ef-d1b5-4b43-9321-dbb946130df1
-# ╠═53dca706-9b75-474a-8a1f-4010c6996dfe
+# ╟─53dca706-9b75-474a-8a1f-4010c6996dfe
 # ╟─8cd25259-1d7b-4f7b-ae74-9263f45cbcc0
 # ╟─bc99b3ef-d24a-48b3-8326-96baaab9fcbd
-# ╟─55be1196-a9df-40dc-992a-75fe0bc80d8e
+# ╠═55be1196-a9df-40dc-992a-75fe0bc80d8e
 # ╟─4648e611-d0de-4b23-b5f2-7b5463365999
 # ╠═43e0f41e-b118-4d99-a753-2078e51afb86
 # ╠═1de9ff83-6922-4d99-b723-8b45b8e97968

@@ -167,7 +167,7 @@ function simulate_sequences(
     prefix = "",
     kwargs...
 )
-    tree = read_tree(joinpath(folder,tree_file))
+    tree = read_tree(joinpath(folder,tree_file); check=false)
     return evolve(
         tree, model;
         leaves_fasta = joinpath(folder, prefix, leaves_fasta),

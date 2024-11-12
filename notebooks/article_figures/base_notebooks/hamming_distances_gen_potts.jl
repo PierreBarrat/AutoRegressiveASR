@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.41
+# v0.20.0
 
 using Markdown
 using InteractiveUtils
@@ -141,6 +141,9 @@ md"# Figures"
 # ╔═╡ 6c8c0fc2-b6d1-4fbf-b5b4-5bf8a898a0cf
 md"## Gaps - ML"
 
+# ╔═╡ 460cda47-f7f2-4497-8725-ffcc7b7bc3b9
+strategies
+
 # ╔═╡ 53dca706-9b75-474a-8a1f-4010c6996dfe
 folder_picker
 
@@ -162,19 +165,26 @@ begin
 	smoothing_alg = :hist
 end
 
-# ╔═╡ 7df463a0-e072-4ec2-82c3-350460c01837
-begin
+# ╔═╡ a5974e28-bac2-4954-bb01-aff09672971c
+strat_clr = let
 	# plot style
 	pal = palette(:default)
-	strat_clr = Dict{Any,Any}(
-		"iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3]
+	_strat_clr = Dict{Any,Any}(
+		"iqtree" => pal[1],
+		"autoregressive" => pal[2],
+		"real" => pal[3],
 	)
-	for strat in strategies
-		strat_clr[strat] = strat_clr[strat[1]]
+	let i = 4
+		for strat in strategies
+			_strat_clr[strat] = get(_strat_clr, strat[1], pal[i])
+			_strat_clr[strat[1]] = _strat_clr[strat]
+			i += 1
+		end
 	end
+	strat_clr(strat) = _strat_clr[strat]
 end
 
-# ╔═╡ 0daf2e97-bb2b-4e26-99a2-85e37071510e
+# ╔═╡ cd0fd75a-c95e-4bba-9c8b-caf11b6a93cb
 begin
 	bayesian(strategies) = filter(x -> length(x)>1 && x[2]=="Bayes", strategies)
 	ml(strategies) = filter(strategies) do x 
@@ -187,7 +197,8 @@ begin
 
 	iqtree(strategies) = filter(x -> x[1]=="iqtree", strategies)
 	ar(strategies) = filter(x -> x[1]=="autoregressive", strategies)
-
+	profile(strategies) = filter(x -> x[1]=="profile", strategies)
+	
 	function label_short(strat)
 		length(strat) == 1 && return strat[1]
 		strat[2] == "Bayes" ? "" : strat[1]
@@ -198,13 +209,13 @@ begin
 	function linestyle(strat)
 		lw = 4
 		return if length(strat) > 1 && strat[2] == "Bayes"
-			(lw, :dash, strat_clr[strat[1]])
+			(lw, :dash, strat_clr(strat[1]))
 		else
-			(lw, strat_clr[strat[1]])
+			(lw, strat_clr(strat[1]))
 		end
 	end
 	function barstyle(strat)
-		(3, strat_clr[strat])
+		(3, strat_clr(strat))
 	end
 end
 
@@ -303,11 +314,11 @@ let p = plot()
 			yerr = sem(ystd, N)
 			plot!(
 				x, y; ribbon = yerr, fillalpha=.2, 
-				label=strat[1], color = strat_clr[strat]
+				label=strat[1], color = strat_clr(strat)
 			)
 		else
 			plot!(
-				x, y; label="", color = strat_clr[strat], line = (3, :dash)
+				x, y; label="", color = strat_clr(strat), line = (3, :dash)
 			)
 		end
 	end
@@ -354,6 +365,52 @@ let p = plot()
 	p
 end
 
+# ╔═╡ 7df463a0-e072-4ec2-82c3-350460c01837
+# begin
+# 	# plot style
+# 	pal = palette(:default)
+# 	strat_clr = Dict{Any,Any}(
+# 		"iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3]
+# 	)
+# 	for strat in strategies
+# 		strat_clr[strat] = strat_clr[strat[1]]
+# 	end
+# end
+
+# ╔═╡ 0daf2e97-bb2b-4e26-99a2-85e37071510e
+# begin
+# 	bayesian(strategies) = filter(x -> length(x)>1 && x[2]=="Bayes", strategies)
+# 	ml(strategies) = filter(strategies) do x 
+# 		length(x) < 2 && return false
+# 		x[2] == "ML" || x[2] == "ml"
+# 	end
+# 	real(strategies) = filter(==(("real",)), strategies)
+# 	reconstruction(strategies) = filter(!=(("real",)), strategies)
+# 	strat_label(strat) = joinpath(strat...)
+
+# 	iqtree(strategies) = filter(x -> x[1]=="iqtree", strategies)
+# 	ar(strategies) = filter(x -> x[1]=="autoregressive", strategies)
+
+# 	function label_short(strat)
+# 		length(strat) == 1 && return strat[1]
+# 		strat[2] == "Bayes" ? "" : strat[1]
+# 	end
+# 	label_long(strat) = reduce((x,y) -> x*" - "*y, strat)
+
+	
+# 	function linestyle(strat)
+# 		lw = 4
+# 		return if length(strat) > 1 && strat[2] == "Bayes"
+# 			(lw, :dash, strat_clr[strat[1]])
+# 		else
+# 			(lw, strat_clr[strat[1]])
+# 		end
+# 	end
+# 	function barstyle(strat)
+# 		(3, strat_clr[strat])
+# 	end
+# end
+
 # ╔═╡ Cell order:
 # ╠═23867cb9-a0ab-46ab-8636-d58aa37ed5e8
 # ╟─1a359777-0e61-4bf7-bdd4-02c0e94fc77c
@@ -377,6 +434,7 @@ end
 # ╠═8e712428-e107-4f39-99d1-6b6fa2a08c66
 # ╟─4e683b40-217f-4670-897a-0cfe6dc6185e
 # ╟─6c8c0fc2-b6d1-4fbf-b5b4-5bf8a898a0cf
+# ╠═460cda47-f7f2-4497-8725-ffcc7b7bc3b9
 # ╠═9de682ef-d1b5-4b43-9321-dbb946130df1
 # ╠═53dca706-9b75-474a-8a1f-4010c6996dfe
 # ╟─bc99b3ef-d24a-48b3-8326-96baaab9fcbd
@@ -384,5 +442,7 @@ end
 # ╟─4648e611-d0de-4b23-b5f2-7b5463365999
 # ╠═43e0f41e-b118-4d99-a753-2078e51afb86
 # ╠═1de9ff83-6922-4d99-b723-8b45b8e97968
+# ╠═a5974e28-bac2-4954-bb01-aff09672971c
+# ╠═cd0fd75a-c95e-4bba-9c8b-caf11b6a93cb
 # ╠═7df463a0-e072-4ec2-82c3-350460c01837
 # ╠═0daf2e97-bb2b-4e26-99a2-85e37071510e

@@ -8,58 +8,50 @@ using Dates
 using JLD2
 using JSON3
 
-function asr_ardca(parsed_args::AbstractDict; force=false)
-    # Extracting useful parameters
-    @unpack iqtree_prefix, opt_bl = parsed_args
-    dat_folder = joinpath(parsed_args["folder"], "data")
-
-    # Preparing ardca model
-    arnet_file = projectdir(parsed_args["arnet"])
-    arnet = JLD2.load(projectdir(arnet_file))["arnet"]
-    evo_arnet = ASR.AutoRegressiveModel(arnet)
-
+function asr_profile(parsed_args::AbstractDict; force=false)
     # Reconstruction strategies
-    strategy_infer_bl = ASRMethod(; joint=false, verbosity=2)
+    optbl = parsed_args["asr_opt_bl"]
+    strategy_infer_bl = ASRMethod(; joint=false, optimize_branch_length_cycles=2, verbosity=2)
     strategy_ml = ASRMethod(; joint=false, ML=true, optimize_branch_length=false, verbosity=2)
     strategy_bayes = ASRMethod(;
         joint=false, ML=false, repetitions = 10, optimize_branch_length=false, verbosity=2,
     )
-    prefix = "autoregressive/"
+    prefix = "profile/"
 
     # Reconstruct on real tree using AR model
-    @info "Reconstruction using ArDCA"
+    @info "Reconstruction using profile"
+    dat_folder = joinpath(parsed_args["folder"], "data")
     performed = false
     for fol in ASRU.get_tree_folders(dat_folder)
         @info fol
-        # Setting folders - check whether redo simulation or not
-        ardca_folder = joinpath(fol, prefix)
-        iqtree_folder = joinpath(fol, iqtree_prefix)
-        if isdir(ardca_folder)
-            if force
-                @warn "Removing $(joinpath(fol,prefix))"
-                rm(ardca_folder; recursive=true)
-            else
-                @warn "$(ardca_folder) already exists. Not running asr_ardca again"
-                continue
-            end
-        end
-        mkpath(ardca_folder)
-        performed = true
 
-        # reinfer branch length
         evo_profile = ASR.ProfileModel(
             joinpath(fol, "alignment_leaves.fasta"), pc=0.1, reweighting=true,
         )
-        if opt_bl == :fromiqtree
+
+        if isdir(joinpath(fol, prefix))
+            if force
+                @warn "Removing $(joinpath(fol,prefix))"
+                rm(joinpath(fol, prefix); recursive=true)
+            else
+                @warn "$(joinpath(fol, prefix)) already exists. Not running asr_profile again"
+                continue
+            end
+        end
+        mkpath(joinpath(fol, prefix));
+        performed = true
+
+        # reinfer branch length
+        if Symbol(optbl) == :fromiqtree
             @info "Optimizing branch length starting from iqtree's tree"
             ASR.optimize_branch_length(
-                joinpath(fol, iqtree_folder, "tree_inferred.nwk"),
+                joinpath(fol, "iqtree/tree_inferred.nwk"),
                 joinpath(fol, "alignment_leaves.fasta"),
                 evo_profile,
                 strategy_infer_bl;
                 outnewick = joinpath(fol, prefix, "tree_inferred.nwk"),
             )
-        elseif opt_bl == :fromreal
+        elseif Symbol(optbl) == :fromreal
             @info "Optimizing branch length starting from the real tree"
             ASR.optimize_branch_length(
                 joinpath(fol, "tree.nwk"),
@@ -68,32 +60,33 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
                 strategy_infer_bl;
                 outnewick = joinpath(fol, prefix, "tree_inferred.nwk"),
             )
-        elseif opt_bl == :scale
+        elseif Symbol(optbl) == :scale
             @info "Scaling branches of iqtree's tree"
             ASR.optimize_branch_scale(
-                joinpath(fol, iqtree_folder, "tree_inferred.nwk"),
+                joinpath(fol, "iqtree/tree_inferred.nwk"),
                 joinpath(fol, "alignment_leaves.fasta"),
                 evo_profile,
                 strategy_infer_bl;
                 outnewick = joinpath(fol, prefix, "tree_inferred.nwk"),
             )
-        elseif opt_bl == :real
+        elseif Symbol(optbl) == :real
             @info "Not optimizing branch length: using the real tree"
             cp(
                 joinpath(fol, "tree.nwk"), joinpath(fol, prefix, "tree_inferred.nwk")
             )
-        elseif opt_bl == :iqtree
-            @info "Not optimzing branch length: using iqtree's tree"
+        elseif Symbol(optbl) == :iqtree
+            @info "Not optimizing branch length: using iqtree's tree"
             cp(
-                joinpath(fol, iqtree_folder, "tree_inferred.nwk"),
+                joinpath(fol, "iqtree/tree_inferred.nwk"),
                 joinpath(fol, prefix, "tree_inferred.nwk"),
             )
         else
-            error("Unrecognized `opt_bl` $opt_bl")
+            error("Unrecognized `optbl` $optbl")
         end
+
         # ML
         ASRU.reconstruct(
-            fol, evo_arnet, strategy_ml;
+            fol, evo_profile, strategy_ml;
             tree_file = joinpath(prefix, "tree_inferred.nwk"),
             alignment_file = "alignment_leaves.fasta",
             outfiles = ["reconstructed_internals_ML.fasta"],
@@ -101,12 +94,13 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
         )
         # Bayesian
         ASRU.reconstruct(
-            fol, evo_arnet, strategy_bayes;
+            fol, evo_profile, strategy_bayes;
             tree_file = joinpath(prefix, "tree_inferred.nwk"),
             alignment_file = "alignment_leaves.fasta",
             outfiles = ["reconstructed_internals_rep$(i).fasta" for i in 1:strategy_bayes.repetitions],
             prefix = prefix * "Bayes/"
         )
+
     end
 
     if performed
@@ -115,13 +109,13 @@ function asr_ardca(parsed_args::AbstractDict; force=false)
             arnet_file,
             timestamp,
             prefix,
-            opt_bl,
+            optbl,
             strategy_infer_bl,
             strategy_ml,
             strategy_bayes,
         )
         @tag!(parameters)
-        open(joinpath(parsed_args["folder"], "ardca_reconstruction_parameters.json"), "w") do f
+        open(joinpath(parsed_args["folder"], "profile_reconstruction_parameters.json"), "w") do f
             JSON3.pretty(f, JSON3.write(parameters))
         end
     end

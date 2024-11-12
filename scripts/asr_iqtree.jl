@@ -9,22 +9,23 @@ function asr_iqtree(parsed_args::AbstractDict; force=false)
     folder = parsed_args["folder"] |> abspath
     dat_folder = joinpath(folder, "data")
 
-    # model = "Blosum62+I+G4" # model finder had this most of the time
+
     model = isempty(parsed_args["iqtree_model"]) ? nothing : parsed_args["iqtree_model"]
+    dir_prefix = dir_prefix_from_model(model)
     bayes_repetitions = 5
 
     # Reconstruct using iqtree (will reinfer branches)
     performed = false
-    @info "Reconstruction with iqtree"
+    @info "Reconstruction with iqtree using model $model"
     for fol in ASRU.get_tree_folders(dat_folder)
-        dir_prefix = "iqtree/"
+        iqtree_folder = joinpath(fol, dir_prefix)
         iqtree_prefix = "IQTREE"
-        if isdir(joinpath(fol, dir_prefix))
+        if isdir(iqtree_folder)
             if force
-                @warn "Removing $(joinpath(fol,dir_prefix))"
-                rm(joinpath(fol, dir_prefix); recursive=true)
+                @warn "Removing $(iqtree_folder)"
+                rm(iqtree_folder; recursive=true)
             else
-                @warn "$(joinpath(fol, dir_prefix)) already exists. Not running asr_iqtree again"
+                @warn "$(iqtree_folder) already exists. Not running asr_iqtree again"
                 continue
             end
         end
@@ -42,7 +43,7 @@ function asr_iqtree(parsed_args::AbstractDict; force=false)
 
         # ML
         ASRU.alignment_from_iqtree_state(
-            joinpath(fol, dir_prefix); # operate in the fol/iqtree/ dir
+            iqtree_folder; # operate in the fol/iqtree/ dir
             state_file = iqtree_prefix * ".state",
             prefix = "ML",
             out_files = ["reconstructed_internals_ML.fasta"],
@@ -52,7 +53,7 @@ function asr_iqtree(parsed_args::AbstractDict; force=false)
 
         # Bayes - for testing
         ASRU.alignment_from_iqtree_state(
-            joinpath(fol, dir_prefix); # operate in the fol/iqtree/ dir
+            iqtree_folder; # operate in the fol/iqtree/ dir
             state_file = iqtree_prefix * ".state",
             prefix = "Bayes",
             out_files = ["reconstructed_internals_rep$(i).fasta" for i in 1:bayes_repetitions],
@@ -80,5 +81,7 @@ function asr_iqtree(parsed_args::AbstractDict; force=false)
         end
     end
 
-    return dat_folder
+    return dat_folder, dir_prefix
 end
+
+dir_prefix_from_model(model) = isnothing(model) ? "iqtree/" : "iqtree-$(model)/"

@@ -37,7 +37,7 @@ function simulate_data_potts_yule(parsed_args::AbstractDict; force=false)
     )
     @tag!(parameters)
     identifier = savename(
-        parsed_args["prefix"], parameters;
+        parsed_args["prefix"], parameters, parsed_args["suffix"];
         accesses = [:nleaves, :nsweeps, :ntrees, :reps],
         sort = true,
     )

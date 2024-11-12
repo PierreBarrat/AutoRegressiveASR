@@ -38,12 +38,11 @@ function analyze_results_and_write(folder; kwargs...)
     return data
 end
 
-
-
 function analyze_results(
     folder::AbstractString;
     strategies = default_strategies,
 )
+    @info strategies
     !isabspath(folder) && (folder = projectdir(folder))
     # retrieving generative model and sample
     parameters = JSON3.read(open(joinpath(folder, "simulation_parameters.json"), "r"))
@@ -59,13 +58,11 @@ function analyze_results(
         nothing, nothing
     end
 
-    @info model_consensus
-
     data_folder = joinpath(folder, "data")
-
+    all_strategies = ASRU.real_strategy_names(data_folder, strategies)
     # read data, measure observables and store results in dataframe
     data = Dict()
-    for strat in strategies
+    for strat in all_strategies
         data[strat] = reconstruction_results(
             data_folder, strat; generative_model, model_consensus
         )
@@ -97,7 +94,8 @@ end
 """
     reconstructed_files(folder, strat)
 
-`strat` must be like `("iqtree", "ML")`. Searches for trees in `folder/strat[1]` and for alignments in `folder/strat[1]/strat[2]`.
+`strat` must be like `("iqtree", "ML")`.
+Searches for trees in `folder/strat[1]` and for alignments in `folder/strat[1]/strat[2]`.
 """
 function reconstructed_files(folder, strat)
     aln_files = @chain begin

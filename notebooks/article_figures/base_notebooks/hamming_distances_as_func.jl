@@ -21,10 +21,8 @@ HAM = pluto_ingredients(
     scriptsdir("figures_and_results/analyze_results_and_write_df.jl")
 )
 
-function hamming_distance_plots(folder)
-
+function hamming_distance_plots(folder; iqtree_strategy="base")
     # Read data
-
     data_all, _ = produce_or_load(
         Dict("folder" => folder);
         filename = x -> joinpath(x["folder"], "measures_asr.jld2"), suffix="",
@@ -58,14 +56,29 @@ function hamming_distance_plots(folder)
     end
 
     strategies = let
-        st = collect(keys(data))
-
         lt(x,y) = if length(x) == length(y)
             x > y
         else
             length(x) > length(y)
         end
-        sort(st; lt)
+        function filter_iqtree(strat)
+            if length(strat) != 2
+                return true
+            end
+
+            name, _ = strat # iqtree-model / autoregressive
+            return if occursin("iqtree", name)
+                if iqtree_strategy == "base"
+                    !occursin(r"C\d\d", name)
+                else
+                    occursin(Regex(iqtree_strategy), name) # select the wanted strategy
+                end
+            else
+                true
+            end
+        end
+        @info @chain data keys collect sort(; lt)
+        st = @chain data keys collect sort(; lt) filter(filter_iqtree, _)
     end
 
     begin
@@ -76,28 +89,39 @@ function hamming_distance_plots(folder)
     end
 
     begin
-        # plot style
+        is_iqtree(strat) = occursin("iqtree", strat[1])
+        is_autoregressive(strat) = strat[1] == "autoregressive"
+        is_ml(strat) = length(strat) == 2 && (strat[2] == "ml" || strat[2] == "ML")
+        is_bayes(strat) = length(strat) == 2 && (strat[2] == "Bayes" || strat[2] == "bayes")
+    end
+
+    begin
         pal = palette(:default)
-        strat_clr = Dict{Any,Any}(
-            "iqtree" => pal[1], "autoregressive" => pal[2], "real" => pal[3]
-        )
+        strat_clr = Dict()
         for strat in strategies
-            strat_clr[strat] = strat_clr[strat[1]]
+            if is_iqtree(strat)
+                strat_clr[strat] = pal[1]
+                strat_clr[strat[1]] = pal[1]
+            elseif is_autoregressive(strat)
+                strat_clr[strat] = pal[2]
+                strat_clr[strat[1]] = pal[2]
+            elseif strat[1] == "real"
+                strat_clr[strat] = pal[3]
+                strat_clr[strat[1]] = pal[3]
+            end
         end
     end
 
     begin
-        bayesian(strategies) = filter(x -> length(x)>1 && x[2]=="Bayes", strategies)
-        ml(strategies) = filter(strategies) do x
-            length(x) < 2 && return false
-            x[2] == "ML" || x[2] == "ml"
-        end
+        bayesian(strategies) = filter(is_bayes, strategies)
+        ml(strategies) = filter(is_ml, strategies)
         real(strategies) = filter(==(("real",)), strategies)
         reconstruction(strategies) = filter(!=(("real",)), strategies)
         strat_label(strat) = joinpath(strat...)
 
-        iqtree(strategies) = filter(x -> x[1]=="iqtree", strategies)
-        ar(strategies) = filter(x -> x[1]=="autoregressive", strategies)
+        iqtree(strategies) = filter(is_iqtree , strategies)
+        ar(strategies) = filter(is_autoregressive, strategies)
+
 
         function label_short(strat)
             length(strat) == 1 && return strat[1]
@@ -108,7 +132,7 @@ function hamming_distance_plots(folder)
 
         function linestyle(strat)
             lw = 4
-            return if length(strat) > 1 && strat[2] == "Bayes"
+            return if is_bayes(strat)
                 (lw, :dash, strat_clr[strat[1]])
             else
                 (lw, strat_clr[strat[1]])
@@ -135,9 +159,10 @@ function hamming_distance_plots(folder)
         end
 
         # Difference
-        S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
-        D1 = sort(data[S1], :node_depth)
-        D2 = sort(data[S2], :node_depth)
+        S_iqtree = @chain strategies filter(is_iqtree, _) filter(is_ml, _) first
+        S_ar = @chain strategies filter(is_autoregressive, _) filter(is_ml, _) first
+        D1 = sort(data[S_iqtree], :node_depth)
+        D2 = sort(data[S_ar], :node_depth)
         X = D1.node_depth
         Y = D1.hamming_to_real - D2.hamming_to_real # iqtree - AR
 
@@ -174,9 +199,10 @@ function hamming_distance_plots(folder)
         end
 
         # Difference
-        S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
-        D1 = sort(data[S1], :node_depth)
-        D2 = sort(data[S2], :node_depth)
+        S_iqtree = @chain strategies filter(is_iqtree, _) filter(is_ml, _) first
+        S_ar = @chain strategies filter(is_autoregressive, _) filter(is_ml, _) first
+        D1 = sort(data[S_iqtree], :node_depth)
+        D2 = sort(data[S_ar], :node_depth)
         X = D1.node_depth
         Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
 
@@ -219,9 +245,10 @@ function hamming_distance_plots(folder)
         end
 
         # Difference
-        S1, S2 = (("iqtree", "Bayes"), ("autoregressive", "Bayes"))
-        D1 = sort(data[S1], :node_depth)
-        D2 = sort(data[S2], :node_depth)
+        S_iqtree = @chain strategies filter(is_iqtree, _) filter(is_bayes, _) first
+        S_ar = @chain strategies filter(is_autoregressive, _) filter(is_bayes, _) first
+        D1 = sort(data[S_iqtree], :node_depth)
+        D2 = sort(data[S_ar], :node_depth)
         X = D1.node_depth
         Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
 
@@ -234,9 +261,10 @@ function hamming_distance_plots(folder)
         )
 
         # Difference ML for ref
-        S1, S2 = (("iqtree", "ML"), ("autoregressive", "ML"))
-        D1 = sort(data[S1], :node_depth)
-        D2 = sort(data[S2], :node_depth)
+        S_iqtree = @chain strategies filter(is_iqtree, _) filter(is_ml, _) first
+        S_ar = @chain strategies filter(is_autoregressive, _) filter(is_ml, _) first
+        D1 = sort(data[S_iqtree], :node_depth)
+        D2 = sort(data[S_ar], :node_depth)
         X = D1.node_depth
         Y = D1.hamming_to_real_nogap - D2.hamming_to_real_nogap # iqtree - AR
 
@@ -259,6 +287,7 @@ function hamming_distance_plots(folder)
         p
     end
 
+    iqtree_strat_name = @chain strategies filter(is_iqtree, _) first first
     return (
         hamming_real_ml_wgaps = hamming_real_ml_wgaps,
         hamming_real_ml_nogaps = hamming_real_ml_nogaps,
